@@ -25,10 +25,12 @@ venv/
 env/
 ENV/
 .venv
+backend/venv/
 
 # Environment Variables
 .env
 .env.local
+backend/.env
 
 # IDE
 .vscode/
@@ -40,12 +42,18 @@ ENV/
 # Logs
 logs/
 *.log
+backend/logs/*
 
 # Storage
 storage/photographs/*
 !storage/photographs/.gitkeep
 storage/vectors/*
 !storage/vectors/.gitkeep
+backend/storage/photographs/*
+!backend/storage/photographs/.gitkeep
+backend/storage/vectors/*
+!backend/storage/vectors/.gitkeep
+backend/storage/vector_db/*
 
 # Testing
 .pytest_cache/
