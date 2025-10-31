@@ -319,3 +319,83 @@ async def submit_applications_batch(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_response.dict()
         )
+
+
+@router.post("/status/batch", response_model=List[ApplicationStatusResponse])
+async def get_batch_application_status(
+    application_ids: List[str],
+    db=Depends(get_database)
+) -> List[ApplicationStatusResponse]:
+    """
+    Get status for multiple applications in batch
+    
+    - **application_ids**: List of application IDs to query (max 100)
+    
+    Returns list of application statuses
+    """
+    try:
+        # Validate batch size
+        if len(application_ids) > 100:
+            error_response = create_error_response(
+                ErrorCode.E400,
+                details={"error": "Batch size exceeds maximum of 100 applications"}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_response.dict()
+            )
+        
+        if not application_ids:
+            error_response = create_error_response(
+                ErrorCode.E400,
+                details={"error": "Empty application ID list"}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_response.dict()
+            )
+        
+        logger.info(f"Batch status query for {len(application_ids)} applications")
+        
+        app_repo = ApplicationRepository(db)
+        responses = []
+        
+        # Query all applications
+        for app_id in application_ids:
+            application = await app_repo.get_by_id(app_id)
+            
+            if application:
+                responses.append(ApplicationStatusResponse(
+                    application_id=application.application_id,
+                    status=application.processing.status,
+                    is_duplicate=application.result.is_duplicate,
+                    identity_id=application.result.identity_id,
+                    error_message=application.processing.error_message,
+                    created_at=application.created_at,
+                    updated_at=application.updated_at
+                ))
+            else:
+                # Application not found - return not found status
+                responses.append(ApplicationStatusResponse(
+                    application_id=app_id,
+                    status=ApplicationStatus.FAILED,
+                    is_duplicate=False,
+                    identity_id=None,
+                    error_message="Application not found",
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow()
+                ))
+        
+        logger.info(f"Batch status query completed: {len(responses)} results")
+        
+        return responses
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in batch status query: {str(e)}")
+        error_response = handle_exception(e, context="batch_status_query")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response.dict()
+        )

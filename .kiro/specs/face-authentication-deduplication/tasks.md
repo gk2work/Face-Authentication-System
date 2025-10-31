@@ -318,25 +318,25 @@
     - _Requirements: 3.2_
 
 - [ ] 14. Build integration and end-to-end workflows
-  - [ ] 14.1 Create end-to-end application processing flow
+  - [x] 14.1 Create end-to-end application processing flow
     - Wire together ingestion → face recognition → de-duplication → identity management
     - Implement status updates at each processing stage
     - Add error propagation and handling across services
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.3_
 
-  - [ ] 14.2 Implement status tracking and notifications
+  - [x] 14.2 Implement status tracking and notifications
     - Create real-time status update mechanism
     - Add webhook support for status notifications
     - Implement batch status query endpoint
     - _Requirements: 3.5_
 
-  - [ ] 14.3 Build admin workflow integration
+  - [x] 14.3 Build admin workflow integration
     - Connect duplicate detection to review interface
     - Implement override decision propagation
     - Add audit trail integration across workflows
     - _Requirements: 5.1, 5.4, 5.5_
 
-  - [ ] 14.4 Write end-to-end integration tests
+  - [x] 14.4 Write end-to-end integration tests
     - Test complete application submission to ID issuance flow
     - Test duplicate detection and review workflow
     - Test error scenarios and recovery

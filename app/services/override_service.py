@@ -8,6 +8,8 @@ from app.core.logging import logger
 from app.database.repositories import ApplicationRepository, IdentityRepository
 from app.models.application import ApplicationStatus
 from app.models.identity import IdentityStatus
+from app.services.audit_service import audit_service
+from app.services.notification_service import notification_service
 
 
 class OverrideDecision(str, Enum):
@@ -53,7 +55,7 @@ class OverrideService:
         return len(justification.strip()) >= self.min_justification_length
     
     async def apply_override(self, application_id: str, decision: str,
-                           justification: str, admin_id: str) -> Dict[str, Any]:
+                           justification: str, admin_id: str, db=None) -> Dict[str, Any]:
         """
         Apply manual override decision
         
@@ -77,8 +79,14 @@ class OverrideService:
             if not self.validate_justification(justification):
                 raise ValueError(f"Justification must be at least {self.min_justification_length} characters")
             
+            # Get database connection if not provided
+            if db is None:
+                from app.database.mongodb import get_database
+                db = await get_database()
+            
             # Get application
-            application = await application_repository.get_by_id(application_id)
+            app_repo = ApplicationRepository(db)
+            application = await app_repo.get_by_id(application_id)
             
             if not application:
                 raise ValueError(f"Application {application_id} not found")
@@ -132,8 +140,23 @@ class OverrideService:
                 logger.info(f"Override: Flagged for review {application_id}")
             
             # Update application
-            await application_repository.update_status(application_id, new_status)
-            await application_repository.update_result(application_id, result_updates)
+            await app_repo.update_status(application_id, new_status)
+            await app_repo.update_result(application_id, result_updates)
+            
+            # Log override decision to audit trail
+            if db:
+                await audit_service.log_override_decision(
+                    db=db,
+                    application_id=application_id,
+                    admin_id=admin_id,
+                    decision=decision,
+                    justification=justification,
+                    original_status=original_status.value,
+                    new_status=new_status.value
+                )
+            
+            # Send notification if webhook configured
+            # (webhook URL would need to be retrieved from application or config)
             
             # Build result
             result = {

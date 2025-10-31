@@ -444,6 +444,152 @@ class AuditService:
         # This is enforced at the database level by not providing update/delete methods
         # This method can be used for additional validation if needed
         return True
+    
+    async def log_application_completion(
+        self,
+        db,
+        application_id: str,
+        identity_id: str,
+        is_duplicate: bool,
+        status: str
+    ) -> Optional[str]:
+        """
+        Log application processing completion
+        
+        Args:
+            db: Database connection
+            application_id: Application identifier
+            identity_id: Assigned identity ID
+            is_duplicate: Whether duplicate was detected
+            status: Final application status
+            
+        Returns:
+            Audit log ID if successful
+        """
+        return await self.create_audit_log(
+            db=db,
+            event_type=EventType.APPLICATION_SUBMISSION,
+            actor_id="system",
+            actor_type=ActorType.SYSTEM,
+            action=f"Application processing completed with status: {status}",
+            resource_id=application_id,
+            resource_type=ResourceType.APPLICATION,
+            details={
+                "identity_id": identity_id,
+                "is_duplicate": is_duplicate,
+                "final_status": status
+            },
+            success=True
+        )
+    
+    async def log_application_rejection(
+        self,
+        db,
+        application_id: str,
+        error_code: str,
+        error_message: str
+    ) -> Optional[str]:
+        """
+        Log application rejection
+        
+        Args:
+            db: Database connection
+            application_id: Application identifier
+            error_code: Error code
+            error_message: Error message
+            
+        Returns:
+            Audit log ID if successful
+        """
+        return await self.create_audit_log(
+            db=db,
+            event_type=EventType.APPLICATION_SUBMISSION,
+            actor_id="system",
+            actor_type=ActorType.SYSTEM,
+            action=f"Application rejected: {error_code}",
+            resource_id=application_id,
+            resource_type=ResourceType.APPLICATION,
+            details={
+                "error_code": error_code,
+                "error_message": error_message
+            },
+            success=False,
+            error_message=error_message
+        )
+    
+    async def log_application_failure(
+        self,
+        db,
+        application_id: str,
+        error_message: str
+    ) -> Optional[str]:
+        """
+        Log application processing failure
+        
+        Args:
+            db: Database connection
+            application_id: Application identifier
+            error_message: Error message
+            
+        Returns:
+            Audit log ID if successful
+        """
+        return await self.create_audit_log(
+            db=db,
+            event_type=EventType.APPLICATION_SUBMISSION,
+            actor_id="system",
+            actor_type=ActorType.SYSTEM,
+            action="Application processing failed",
+            resource_id=application_id,
+            resource_type=ResourceType.APPLICATION,
+            details={
+                "error_message": error_message
+            },
+            success=False,
+            error_message=error_message
+        )
+    
+    async def log_override_decision(
+        self,
+        db,
+        application_id: str,
+        admin_id: str,
+        decision: str,
+        justification: str,
+        original_status: str,
+        new_status: str
+    ) -> Optional[str]:
+        """
+        Log admin override decision
+        
+        Args:
+            db: Database connection
+            application_id: Application identifier
+            admin_id: Admin user ID
+            decision: Override decision
+            justification: Justification for decision
+            original_status: Original application status
+            new_status: New application status
+            
+        Returns:
+            Audit log ID if successful
+        """
+        return await self.create_audit_log(
+            db=db,
+            event_type=EventType.OVERRIDE_DECISION,
+            actor_id=admin_id,
+            actor_type=ActorType.ADMIN,
+            action=f"Override decision: {decision}",
+            resource_id=application_id,
+            resource_type=ResourceType.APPLICATION,
+            details={
+                "decision": decision,
+                "justification": justification,
+                "original_status": original_status,
+                "new_status": new_status
+            },
+            success=True
+        )
 
 
 # Global audit service instance

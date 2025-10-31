@@ -155,12 +155,29 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to connect to MongoDB: {str(e)}")
         raise
+    
+    # Start application processor for end-to-end workflow
+    try:
+        from app.services.application_processor import application_processor
+        await application_processor.start()
+        logger.info("Application processor started")
+    except Exception as e:
+        logger.error(f"Failed to start application processor: {str(e)}")
+        # Don't raise - allow API to start even if processor fails
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on application shutdown"""
     logger.info("Shutting down Face Authentication System")
+    
+    # Stop application processor
+    try:
+        from app.services.application_processor import application_processor
+        await application_processor.stop()
+        logger.info("Application processor stopped")
+    except Exception as e:
+        logger.error(f"Error stopping application processor: {str(e)}")
     
     # Disconnect from MongoDB
     await mongodb_manager.disconnect()
