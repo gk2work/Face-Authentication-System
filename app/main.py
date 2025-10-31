@@ -2,6 +2,8 @@
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from pathlib import Path
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -9,8 +11,9 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.core.security import security_manager
 from app.database.mongodb import mongodb_manager
-from app.api.v1 import applications, auth
-from app.api.v1 import admin
+from app.api.v1 import applications, auth, admin, monitoring
+from app.services.health_check_service import health_check_service
+from datetime import datetime
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
@@ -29,6 +32,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(applications.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(monitoring.router, prefix="/api/v1")
 
 # CORS Configuration
 # In production, replace with specific allowed origins
@@ -99,25 +103,69 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "face-auth-system"
-    }
+    """
+    Health check endpoint
+    
+    Returns basic health status (200 for healthy, 503 for unhealthy)
+    """
+    try:
+        # Quick database check
+        db_healthy = await mongodb_manager.health_check()
+        
+        if db_healthy:
+            return {
+                "status": "healthy",
+                "service": "face-auth-system",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        else:
+            return {
+                "status": "unhealthy",
+                "service": "face-auth-system",
+                "message": "Database connection failed",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return {
+            "status": "unhealthy",
+            "service": "face-auth-system",
+            "message": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 
 @app.get("/ready")
 async def readiness_check():
-    """Readiness check endpoint"""
-    checks = {
-        "database": "ok" if await mongodb_manager.health_check() else "failed",
-        "cache": "ok",  # TODO: Add Redis health check
-        "vector_db": "ok"  # TODO: Add FAISS health check
-    }
+    """
+    Readiness check endpoint
     
-    status = "ready" if all(v == "ok" for v in checks.values()) else "not_ready"
+    Returns comprehensive readiness status including all components
+    (200 for ready, 503 for not ready)
+    """
+    try:
+        health_status = await health_check_service.get_comprehensive_health(mongodb_manager)
+        health_status["timestamp"] = datetime.utcnow().isoformat()
+        
+        # Return 503 if unhealthy
+        status_code = 200 if health_status["status"] in ["healthy", "degraded"] else 503
+        
+        return health_status
+    except Exception as e:
+        logger.error(f"Readiness check failed: {str(e)}")
+        return {
+            "status": "not_ready",
+            "message": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def monitoring_dashboard():
+    """Monitoring dashboard"""
+    dashboard_path = Path(__file__).parent / "templates" / "dashboard.html"
     
-    return {
-        "status": status,
-        "checks": checks
-    }
+    if dashboard_path.exists():
+        return dashboard_path.read_text()
+    else:
+        return "<html><body><h1>Dashboard not found</h1></body></html>"

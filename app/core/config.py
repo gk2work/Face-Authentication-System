@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     ENABLE_METRICS: bool = True
     
+    # Alerting Configuration (SMTP)
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    ALERT_EMAIL_FROM: Optional[str] = None
+    ALERT_EMAIL_TO: Optional[str] = None
+    
     # Quality Thresholds
     MIN_FACE_SIZE: int = 80
     BLUR_THRESHOLD: float = 100.0

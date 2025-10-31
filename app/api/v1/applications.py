@@ -21,6 +21,7 @@ from app.database.repositories import ApplicationRepository, AuditLogRepository
 from app.core.logging import logger
 from app.services.queue_service import queue_service
 from app.services.audit_service import audit_service
+from app.services.metrics_service import metrics_service, MetricType
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 limiter = Limiter(key_func=get_remote_address)
@@ -94,6 +95,9 @@ async def submit_application(
         })
         
         logger.info(f"Application queued for processing: {application_id}")
+        
+        # Record metrics
+        metrics_service.record_count(MetricType.APPLICATION_SUBMISSION)
         
         # Return response
         return ApplicationStatusResponse(

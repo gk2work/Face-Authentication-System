@@ -10,6 +10,8 @@ from facenet_pytorch import MTCNN, InceptionResnetV1
 
 from app.core.config import settings
 from app.core.logging import logger
+from app.services.metrics_service import metrics_service, MetricType
+import time
 
 
 class FaceRecognitionError(Exception):
@@ -330,6 +332,8 @@ class FaceRecognitionService:
         Raises:
             FaceRecognitionError: If any step fails
         """
+        start_time = time.time()
+        
         try:
             logger.info(f"Processing photograph: {image_path}")
             
@@ -351,14 +355,31 @@ class FaceRecognitionService:
                 "face_count": face_count
             }
             
-            logger.info(f"Photograph processing completed successfully")
+            # Record metrics
+            latency_ms = (time.time() - start_time) * 1000
+            metrics_service.record_latency(
+                MetricType.FACE_RECOGNITION,
+                latency_ms,
+                metadata={"quality_score": quality_score}
+            )
+            
+            logger.info(f"Photograph processing completed successfully in {latency_ms:.2f}ms")
             
             return result
             
-        except FaceRecognitionError:
+        except FaceRecognitionError as e:
+            # Record error metric
+            metrics_service.record_error(
+                MetricType.FACE_RECOGNITION,
+                f"{e.error_code}: {e.message}"
+            )
             raise
         except Exception as e:
             logger.error(f"Photograph processing failed: {str(e)}")
+            metrics_service.record_error(
+                MetricType.FACE_RECOGNITION,
+                str(e)
+            )
             raise FaceRecognitionError(
                 error_code="E005",
                 message=f"Photograph processing failed: {str(e)}"
