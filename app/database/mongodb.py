@@ -71,15 +71,26 @@ class MongoDBManager:
             await self.db.applications.create_index("created_at")
             await self.db.applications.create_index([("status", 1), ("created_at", -1)])
             
+            # Compound indexes for frequently queried fields (performance optimization)
+            await self.db.applications.create_index([("processing.status", 1), ("created_at", -1)])
+            await self.db.applications.create_index([("result.identity_id", 1), ("created_at", -1)])
+            await self.db.applications.create_index([("processing.status", 1), ("result.is_duplicate", 1)])
+            
             # Create indexes for identities collection
             await self.db.identities.create_index("unique_id", unique=True)
             await self.db.identities.create_index("status")
             await self.db.identities.create_index("created_at")
             
+            # Compound index for identity queries
+            await self.db.identities.create_index([("status", 1), ("created_at", -1)])
+            
             # Create indexes for identity_embeddings collection
             await self.db.identity_embeddings.create_index("identity_id")
             await self.db.identity_embeddings.create_index("application_id", unique=True)
             await self.db.identity_embeddings.create_index("created_at")
+            
+            # Compound index for embedding queries
+            await self.db.identity_embeddings.create_index([("identity_id", 1), ("created_at", -1)])
             
             # Create indexes for audit_logs collection
             await self.db.audit_logs.create_index("event_type")
@@ -88,11 +99,15 @@ class MongoDBManager:
             await self.db.audit_logs.create_index("timestamp")
             await self.db.audit_logs.create_index([("event_type", 1), ("timestamp", -1)])
             
+            # Compound indexes for audit log queries
+            await self.db.audit_logs.create_index([("resource_id", 1), ("timestamp", -1)])
+            await self.db.audit_logs.create_index([("actor_id", 1), ("event_type", 1), ("timestamp", -1)])
+            
             # Create indexes for users collection (for authentication)
             await self.db.users.create_index("username", unique=True)
             await self.db.users.create_index("email", unique=True)
             
-            logger.info("MongoDB indexes created successfully")
+            logger.info("MongoDB indexes created successfully (including compound indexes for performance)")
             
         except Exception as e:
             logger.error(f"Error creating MongoDB indexes: {str(e)}")

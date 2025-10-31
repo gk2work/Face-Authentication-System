@@ -338,6 +338,58 @@ class FaceRecognitionService:
                 details={"original_error": str(e)}
             )
     
+    def generate_embeddings_batch(self, face_tensors: List[torch.Tensor]) -> List[np.ndarray]:
+        """
+        Generate embeddings for multiple faces in batch (optimized for performance)
+        
+        Args:
+            face_tensors: List of preprocessed face tensors from MTCNN
+            
+        Returns:
+            List of 512-dimensional embedding vectors (L2 normalized)
+            
+        Raises:
+            FaceRecognitionError: If batch embedding generation fails
+        """
+        try:
+            if not face_tensors:
+                return []
+            
+            with torch.no_grad():
+                # Prepare batch tensor
+                batch_tensors = []
+                for face_tensor in face_tensors:
+                    if face_tensor.dim() == 3:
+                        face_tensor = face_tensor.unsqueeze(0)
+                    batch_tensors.append(face_tensor)
+                
+                # Stack into single batch
+                batch = torch.cat(batch_tensors, dim=0).to(self.device)
+                
+                # Generate embeddings in batch
+                embeddings = self.embedding_model(batch)
+                
+                # Convert to numpy and normalize
+                embeddings_np = embeddings.cpu().numpy()
+                
+                # L2 normalization for each embedding
+                normalized_embeddings = []
+                for embedding in embeddings_np:
+                    embedding_normalized = embedding / np.linalg.norm(embedding)
+                    normalized_embeddings.append(embedding_normalized)
+                
+                logger.info(f"Batch embedding generation completed. Generated {len(normalized_embeddings)} embeddings")
+                
+                return normalized_embeddings
+                
+        except Exception as e:
+            logger.error(f"Batch embedding generation failed: {str(e)}")
+            raise FaceRecognitionError(
+                error_code=ErrorCode.E101,
+                message="Batch embedding generation failed",
+                details={"original_error": str(e), "batch_size": len(face_tensors)}
+            )
+    
     def process_photograph(self, image_path: str) -> Dict[str, Any]:
         """
         Complete photograph processing pipeline: detection, quality assessment, and embedding generation

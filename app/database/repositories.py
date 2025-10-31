@@ -9,6 +9,7 @@ from app.models.identity import Identity, IdentityEmbedding, IdentityStatus
 from app.models.audit import AuditLog, EventType
 from app.models.user import User
 from app.core.logging import logger
+from app.services.cache_service import cache_service
 
 
 class ApplicationRepository:
@@ -28,11 +29,33 @@ class ApplicationRepository:
             logger.error(f"Duplicate application_id: {application.application_id}")
             raise ValueError(f"Application with ID {application.application_id} already exists")
     
+    async def create_batch(self, applications: List[Dict[str, Any]]) -> List[str]:
+        """Create multiple applications in batch (optimized for performance)"""
+        try:
+            if not applications:
+                return []
+            
+            result = await self.collection.insert_many(applications, ordered=False)
+            logger.info(f"Batch created {len(result.inserted_ids)} applications")
+            return [str(id) for id in result.inserted_ids]
+        except DuplicateKeyError as e:
+            logger.error(f"Duplicate application_id in batch: {str(e)}")
+            raise ValueError(f"One or more applications already exist in batch")
+    
     async def get_by_id(self, application_id: str) -> Optional[Application]:
-        """Get application by ID"""
+        """Get application by ID with caching"""
+        # Try cache first
+        cache_key = f"app:{application_id}"
+        cached = cache_service.get(cache_key)
+        if cached:
+            return Application(**cached)
+        
+        # Query database
         doc = await self.collection.find_one({"application_id": application_id})
         if doc:
             doc.pop("_id", None)
+            # Cache for 5 minutes (shorter TTL for frequently updated data)
+            cache_service.set(cache_key, doc, ttl=300)
             return Application(**doc)
         return None
     
@@ -54,6 +77,11 @@ class ApplicationRepository:
             {"application_id": application_id},
             {"$set": update_data}
         )
+        
+        # Invalidate cache on update
+        if result.modified_count > 0:
+            cache_service.delete(f"app:{application_id}")
+        
         return result.modified_count > 0
     
     async def update_processing_metadata(self, application_id: str, 
@@ -66,6 +94,11 @@ class ApplicationRepository:
             {"application_id": application_id},
             {"$set": update_data}
         )
+        
+        # Invalidate cache on update
+        if result.modified_count > 0:
+            cache_service.delete(f"app:{application_id}")
+        
         return result.modified_count > 0
     
     async def update_result(self, application_id: str, result_data: Dict[str, Any]) -> bool:
@@ -77,6 +110,11 @@ class ApplicationRepository:
             {"application_id": application_id},
             {"$set": update_data}
         )
+        
+        # Invalidate cache on update
+        if result.modified_count > 0:
+            cache_service.delete(f"app:{application_id}")
+        
         return result.modified_count > 0
     
     async def get_by_status(self, status: ApplicationStatus, 
@@ -169,10 +207,19 @@ class IdentityRepository:
             raise ValueError(f"Identity with ID {identity.unique_id} already exists")
     
     async def get_by_unique_id(self, unique_id: str) -> Optional[Identity]:
-        """Get identity by unique ID"""
+        """Get identity by unique ID with caching"""
+        # Try cache first
+        cache_key = f"identity:{unique_id}"
+        cached = cache_service.get(cache_key)
+        if cached:
+            return Identity(**cached)
+        
+        # Query database
         doc = await self.collection.find_one({"unique_id": unique_id})
         if doc:
             doc.pop("_id", None)
+            # Cache for 1 hour (identities change less frequently)
+            cache_service.set(cache_key, doc, ttl=3600)
             return Identity(**doc)
         return None
     
@@ -182,6 +229,11 @@ class IdentityRepository:
             {"unique_id": unique_id},
             {"$set": {"status": status, "updated_at": datetime.utcnow()}}
         )
+        
+        # Invalidate cache on update
+        if result.modified_count > 0:
+            cache_service.delete(f"identity:{unique_id}")
+        
         return result.modified_count > 0
     
     async def add_application_id(self, unique_id: str, application_id: str) -> bool:
@@ -193,6 +245,11 @@ class IdentityRepository:
                 "$set": {"updated_at": datetime.utcnow()}
             }
         )
+        
+        # Invalidate cache on update
+        if result.modified_count > 0:
+            cache_service.delete(f"identity:{unique_id}")
+        
         return result.modified_count > 0
     
     async def update_metadata(self, unique_id: str, metadata: Dict[str, Any]) -> bool:
@@ -206,6 +263,11 @@ class IdentityRepository:
                 }
             }
         )
+        
+        # Invalidate cache on update
+        if result.modified_count > 0:
+            cache_service.delete(f"identity:{unique_id}")
+        
         return result.modified_count > 0
 
 
@@ -325,10 +387,19 @@ class UserRepository:
             raise ValueError(f"User with username {user.username} already exists")
     
     async def get_by_username(self, username: str) -> Optional[User]:
-        """Get user by username"""
+        """Get user by username with caching"""
+        # Try cache first
+        cache_key = f"user:{username}"
+        cached = cache_service.get(cache_key)
+        if cached:
+            return User(**cached)
+        
+        # Query database
         doc = await self.collection.find_one({"username": username})
         if doc:
             doc.pop("_id", None)
+            # Cache for 1 hour (users change infrequently)
+            cache_service.set(cache_key, doc, ttl=3600)
             return User(**doc)
         return None
     
@@ -338,4 +409,9 @@ class UserRepository:
             {"username": username},
             {"$set": {"last_login": datetime.utcnow()}}
         )
+        
+        # Invalidate cache on update
+        if result.modified_count > 0:
+            cache_service.delete(f"user:{username}")
+        
         return result.modified_count > 0

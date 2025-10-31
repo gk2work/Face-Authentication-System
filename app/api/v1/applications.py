@@ -1,9 +1,10 @@
 """Application submission and status API endpoints"""
 
 from fastapi import APIRouter, HTTPException, Depends, status, Request
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 import uuid
+import asyncio
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -171,6 +172,149 @@ async def get_application_status(
     except Exception as e:
         logger.error(f"Error retrieving application status: {str(e)}")
         error_response = handle_exception(e, context="get_application_status")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response.dict()
+        )
+
+
+@router.post("/batch", response_model=List[ApplicationStatusResponse], status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
+async def submit_applications_batch(
+    request: Request,
+    applications_data: List[ApplicationCreate],
+    db=Depends(get_database)
+) -> List[ApplicationStatusResponse]:
+    """
+    Submit multiple applications for processing in batch (optimized for performance)
+    
+    - **applications_data**: List of application submissions
+    
+    Returns list of application IDs and initial statuses
+    
+    Note: Batch size is limited to 100 applications per request
+    """
+    try:
+        # Validate batch size
+        if len(applications_data) > 100:
+            error_response = create_error_response(
+                ErrorCode.E400,
+                details={"error": "Batch size exceeds maximum of 100 applications"}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_response.dict()
+            )
+        
+        if not applications_data:
+            error_response = create_error_response(
+                ErrorCode.E400,
+                details={"error": "Empty batch submission"}
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=error_response.dict()
+            )
+        
+        logger.info(f"Received batch application submission: {len(applications_data)} applications")
+        
+        # Prepare applications for batch insert
+        applications = []
+        queue_items = []
+        responses = []
+        
+        for app_data in applications_data:
+            # Generate unique application ID
+            application_id = str(uuid.uuid4())
+            
+            # Create photograph metadata
+            photograph_metadata = PhotographMetadata(
+                path=f"./storage/photographs/{application_id}.{app_data.photograph_format}",
+                format=app_data.photograph_format,
+                width=0,
+                height=0,
+                file_size=len(app_data.photograph_base64),
+                uploaded_at=datetime.utcnow()
+            )
+            
+            # Create application document
+            application = Application(
+                application_id=application_id,
+                applicant_data=app_data.applicant_data,
+                photograph=photograph_metadata,
+                processing=ProcessingMetadata(
+                    status=ApplicationStatus.PENDING
+                ),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            applications.append(application.model_dump())
+            
+            # Prepare queue item
+            queue_items.append({
+                "application_id": application_id,
+                "photograph_base64": app_data.photograph_base64,
+                "photograph_format": app_data.photograph_format,
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            
+            # Prepare response
+            responses.append(ApplicationStatusResponse(
+                application_id=application_id,
+                status=ApplicationStatus.PENDING,
+                is_duplicate=False,
+                identity_id=None,
+                error_message=None,
+                created_at=application.created_at,
+                updated_at=application.updated_at
+            ))
+        
+        # Batch insert into MongoDB (optimized)
+        app_repo = ApplicationRepository(db)
+        await app_repo.create_batch(applications)
+        
+        logger.info(f"Batch created {len(applications)} applications in database")
+        
+        # Create audit logs in parallel
+        audit_tasks = [
+            audit_service.log_application_submission(
+                db=db,
+                application_id=app["application_id"],
+                applicant_email=app["applicant_data"]["email"],
+                applicant_name=app["applicant_data"]["name"],
+                ip_address=request.client.host if request.client else None
+            )
+            for app in applications
+        ]
+        await asyncio.gather(*audit_tasks, return_exceptions=True)
+        
+        # Add to processing queue in batch
+        for queue_item in queue_items:
+            await queue_service.enqueue_application(queue_item)
+        
+        logger.info(f"Batch queued {len(queue_items)} applications for processing")
+        
+        # Record metrics
+        metrics_service.record_count(MetricType.APPLICATION_SUBMISSION, count=len(applications))
+        
+        return responses
+        
+    except HTTPException:
+        raise
+    except ValueError as e:
+        logger.error(f"Batch validation error: {str(e)}")
+        error_response = create_error_response(
+            ErrorCode.E400,
+            details={"validation_error": str(e)}
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_response.dict()
+        )
+    except Exception as e:
+        logger.error(f"Error submitting batch applications: {str(e)}")
+        error_response = handle_exception(e, context="batch_application_submission")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_response.dict()
