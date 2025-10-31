@@ -415,3 +415,31 @@ class UserRepository:
             cache_service.delete(f"user:{username}")
         
         return result.modified_count > 0
+    
+    async def list_all(self, skip: int = 0, limit: int = 100, 
+                      is_active: Optional[bool] = None) -> List[User]:
+        """List all users with optional filtering"""
+        query = {}
+        if is_active is not None:
+            query["is_active"] = is_active
+        
+        cursor = self.collection.find(query).skip(skip).limit(limit).sort("created_at", -1)
+        users = []
+        async for doc in cursor:
+            doc.pop("_id", None)
+            users.append(User(**doc))
+        
+        return users
+    
+    async def update(self, username: str, update_data: Dict[str, Any]) -> bool:
+        """Update user information"""
+        result = await self.collection.update_one(
+            {"username": username},
+            {"$set": update_data}
+        )
+        
+        # Invalidate cache on update
+        if result.modified_count > 0:
+            cache_service.delete(f"user:{username}")
+        
+        return result.modified_count > 0
