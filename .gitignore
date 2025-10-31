@@ -19,19 +19,16 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
 # Virtual Environment
 venv/
 env/
 ENV/
-env.bak/
-venv.bak/
+.venv
 
 # Environment Variables
 .env
 .env.local
-.env.*.local
 
 # IDE
 .vscode/
@@ -39,47 +36,33 @@ venv.bak/
 *.swp
 *.swo
 *~
-.DS_Store
-
-# Storage (local files)
-storage/photographs/*
-storage/vectors/*
-!storage/photographs/.gitkeep
-!storage/vectors/.gitkeep
-
-# FAISS Index Files
-*.index
-*.pkl
-*.pickle
 
 # Logs
-*.log
 logs/
+*.log
+
+# Storage
+storage/photographs/*
+!storage/photographs/.gitkeep
+storage/vectors/*
+!storage/vectors/.gitkeep
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
-.hypothesis/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Models (if downloaded)
-models/
-*.pth
-*.pt
-*.onnx
-
-# Database
-*.db
-*.sqlite
-
-# Temporary files
-tmp/
-temp/
-*.tmp
 
 # OS
+.DS_Store
 Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Models and Data
+*.pth
+*.pt
+*.h5
+*.pkl
+*.pickle

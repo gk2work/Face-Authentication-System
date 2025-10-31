@@ -1,203 +1,181 @@
 # Face Authentication and De-duplication System
 
-An AI-powered face authentication and de-duplication system designed for large-scale public examinations in India. This system prevents duplicate registrations by using advanced facial recognition technology to perform one-to-many matching against a historical database.
+AI-powered face authentication system for large-scale public examinations in India. This system prevents duplicate registrations and verifies applicant identities through advanced facial recognition technology.
 
-## 🎯 Project Overview
+## Features
 
-This project is part of the IndiaAI Application Development Initiative (IADI), aimed at strengthening the integrity of public examination processes through AI-enabled de-duplication.
+- **Automated De-duplication**: Detect duplicate applications using facial recognition
+- **Unique Identity Management**: Assign single unique IDs to verified applicants
+- **High Performance**: Process 10,000+ applications per hour
+- **Secure**: AES-256 encryption, role-based access control, comprehensive audit logging
+- **Scalable**: Horizontal scaling support with efficient vector search
 
-### Key Features
+## Technology Stack
 
-- **Automated Duplicate Detection**: Uses facial recognition to identify multiple applications from the same individual
-- **One-to-Many Identity Verification**: Ensures each applicant receives a single unique ID
-- **High Accuracy**: Targets 99.5%+ accuracy in duplicate detection
-- **Scalable**: Designed to process 10,000+ applications per hour
-- **Secure**: Implements encryption, authentication, and comprehensive audit logging
-- **Admin Review Interface**: Allows manual review and override of flagged duplicates
+- **Backend**: FastAPI (Python)
+- **Database**: MongoDB (Atlas)
+- **Vector Database**: FAISS
+- **Cache**: Redis
+- **Face Recognition**: FaceNet (facenet-pytorch)
+- **Logging**: Loguru
 
-## 🏗️ Architecture
+## Project Structure
 
-- **Backend**: Python 3.9+ with FastAPI
-- **Database**: MongoDB (Atlas or local)
-- **Vector Search**: FAISS (CPU-based, local)
-- **Face Recognition**: facenet-pytorch or DeepFace
-- **Caching**: Redis (optional)
-- **Storage**: Local file system (development), S3-compatible (production)
-
-## 📋 Prerequisites
-
-- Python 3.9 or higher
-- MongoDB Atlas account (free tier) or local MongoDB
-- Docker (optional, for Redis)
-- 4GB+ RAM recommended
-- Internet connection for model downloads
-
-## 🚀 Quick Start
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/gk2work/Face-Authentication-System.git
-cd Face-Authentication-System
+```
+.
+├── app/
+│   ├── api/              # API routes and endpoints
+│   │   └── v1/           # API version 1
+│   ├── core/             # Core configuration and logging
+│   ├── database/         # Database connections and operations
+│   ├── models/           # Data models and schemas
+│   ├── services/         # Business logic services
+│   └── utils/            # Utility functions
+├── storage/
+│   ├── photographs/      # Applicant photographs
+│   └── vectors/          # FAISS vector index
+├── tests/                # Test suite
+├── logs/                 # Application logs
+├── docker-compose.yml    # Docker services configuration
+├── requirements.txt      # Python dependencies
+└── .env                  # Environment variables
 ```
 
-### 2. Set Up Virtual Environment
+## Setup Instructions
+
+### Prerequisites
+
+- Python 3.10+
+- Docker and Docker Compose
+- MongoDB Atlas account (or local MongoDB)
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone <repository-url>
+cd face-authentication-deduplication
+```
+
+2. Create a virtual environment:
 
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-### 3. Install Dependencies
+3. Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment
-
-Create a `.env` file in the project root:
+4. Set up environment variables:
 
 ```bash
-MONGODB_URI=mongodb+srv://your-connection-string
-STORAGE_PATH=./storage/photographs
-VECTOR_DB_PATH=./storage/vectors
-VECTOR_DB_TYPE=faiss
-FACE_MODEL=facenet
-JWT_SECRET_KEY=your-secret-key-change-in-production
+cp .env.example .env
+# Edit .env with your configuration
 ```
 
-### 5. Create Storage Directories
+5. Start Redis (and optional MongoDB):
 
 ```bash
-mkdir -p storage/photographs
-mkdir -p storage/vectors
+docker-compose up -d
 ```
 
-### 6. Run the Application
+6. Create storage directories (if not exists):
+
+```bash
+mkdir -p storage/photographs storage/vectors logs
+```
+
+### Running the Application
+
+Start the development server:
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 7. Access the API
+The API will be available at:
 
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
+- API: http://localhost:8000
+- Interactive API docs: http://localhost:8000/docs
+- Alternative API docs: http://localhost:8000/redoc
 
-## 📚 Documentation
-
-- [Requirements Document](.kiro/specs/face-authentication-deduplication/requirements.md)
-- [Design Document](.kiro/specs/face-authentication-deduplication/design.md)
-- [Implementation Tasks](.kiro/specs/face-authentication-deduplication/tasks.md)
-- [Local Setup Guide](.kiro/specs/face-authentication-deduplication/LOCAL_SETUP.md)
-
-## 🧪 Testing
+### Running Tests
 
 ```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=app tests/
-
-# Run specific test file
-pytest tests/test_face_recognition.py
+pytest tests/ -v
 ```
 
-## 📊 API Usage Examples
+## API Endpoints
 
-### Submit an Application
+### Health Checks
 
-```bash
-curl -X POST "http://localhost:8000/api/v1/applications" \
-  -H "Content-Type: multipart/form-data" \
-  -F "photograph=@photo.jpg" \
-  -F "applicant_data={\"name\":\"John Doe\",\"email\":\"john@example.com\"}"
-```
+- `GET /` - Root endpoint
+- `GET /health` - Health check
+- `GET /ready` - Readiness check
 
-### Check Application Status
+### Application Management (Coming Soon)
 
-```bash
-curl "http://localhost:8000/api/v1/applications/{application_id}/status"
-```
+- `POST /api/v1/applications` - Submit new application
+- `GET /api/v1/applications/{id}/status` - Check application status
 
-### Admin Login
+### Admin Endpoints (Coming Soon)
 
-```bash
-curl -X POST "http://localhost:8000/api/v1/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}'
-```
+- `GET /api/v1/admin/duplicates` - List duplicate cases
+- `POST /api/v1/admin/duplicates/{caseId}/override` - Override duplicate decision
 
-## 🔒 Security
+## Configuration
 
+Key environment variables:
+
+- `MONGODB_URI`: MongoDB connection string
+- `REDIS_URL`: Redis connection URL
+- `VERIFICATION_THRESHOLD`: Face matching threshold (default: 0.85)
+- `LOG_LEVEL`: Logging level (INFO, DEBUG, WARNING, ERROR)
+- `SECRET_KEY`: JWT secret key for authentication
+
+See `.env.example` for complete configuration options.
+
+## Development
+
+### Code Structure
+
+- **app/core**: Configuration, logging, and core utilities
+- **app/models**: Pydantic models for data validation
+- **app/services**: Business logic (face recognition, de-duplication, identity management)
+- **app/database**: Database connections and operations
+- **app/api**: REST API endpoints
+
+### Adding New Features
+
+1. Define models in `app/models/`
+2. Implement business logic in `app/services/`
+3. Create API endpoints in `app/api/v1/`
+4. Add tests in `tests/`
+
+## Monitoring
+
+Logs are stored in:
+
+- `logs/app_YYYY-MM-DD.log` - Human-readable logs
+- `logs/app_YYYY-MM-DD.json` - Structured JSON logs
+
+## Security
+
+- All sensitive data encrypted at rest and in transit
 - JWT-based authentication
-- Password hashing with bcrypt
+- Role-based access control
+- Comprehensive audit logging
 - Rate limiting on API endpoints
-- Audit logging for all operations
-- Secure file storage with proper permissions
 
-## 🎯 Performance Targets
+## License
 
-- **Processing Time**: < 5 seconds per application
-- **Throughput**: 10,000+ applications per hour
-- **Accuracy**: 99.5%+ duplicate detection rate
-- **False Positive Rate**: < 0.1%
-- **Availability**: 99.9%+ uptime
+[Your License Here]
 
-## 🛠️ Technology Stack
+## Support
 
-### Core Technologies
-
-- **FastAPI**: Modern, fast web framework
-- **PyMongo**: MongoDB driver for Python
-- **FAISS**: Efficient similarity search
-- **facenet-pytorch**: Face recognition models
-- **OpenCV**: Image processing
-- **Redis**: Caching (optional)
-
-### Key Libraries
-
-- pydantic: Data validation
-- python-jose: JWT tokens
-- passlib: Password hashing
-- slowapi: Rate limiting
-- uvicorn: ASGI server
-
-## 📈 Roadmap
-
-- [x] Requirements and design documentation
-- [x] Implementation task planning
-- [ ] Core API implementation
-- [ ] Face recognition service
-- [ ] De-duplication engine
-- [ ] Admin review interface
-- [ ] Testing and optimization
-- [ ] Production deployment
-
-## 🤝 Contributing
-
-This project is part of the IndiaAI Challenge. Contributions should align with the project requirements and design specifications.
-
-## 📄 License
-
-This project is developed for the IndiaAI Application Development Initiative.
-
-## 👥 Team
-
-Developed for the IndiaAI Face Authentication Challenge.
-
-## 📞 Support
-
-For issues and questions, please open an issue on GitHub.
-
-## 🙏 Acknowledgments
-
-- IndiaAI Mission
-- Digital India Corporation (DIC)
-- Ministry of Electronics and IT (MeitY)
-
----
-
-**Note**: This system is currently in development. For local development setup and detailed instructions, see [LOCAL_SETUP.md](.kiro/specs/face-authentication-deduplication/LOCAL_SETUP.md).
+For issues and questions, please contact [Your Contact Information]
