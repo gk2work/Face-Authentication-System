@@ -7,7 +7,7 @@ services:
   # FastAPI Application
   app:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     container_name: face-auth-api
     ports:
@@ -30,9 +30,9 @@ services:
       - VERIFICATION_THRESHOLD=0.85
       - MAX_QUEUE_SIZE=1000
     volumes:
-      - ./app:/app/app
-      - ./storage:/app/storage
-      - ./logs:/app/logs
+      - ./backend/app:/app/app
+      - ./backend/storage:/app/storage
+      - ./backend/logs:/app/logs
     depends_on:
       - mongodb
     networks:

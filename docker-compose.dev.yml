@@ -6,15 +6,15 @@ version: "3.8"
 services:
   app:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - ENVIRONMENT=development
       - LOG_LEVEL=debug
     volumes:
-      - ./app:/app/app:ro
-      - ./storage:/app/storage
-      - ./logs:/app/logs
+      - ./backend/app:/app/app:ro
+      - ./backend/storage:/app/storage
+      - ./backend/logs:/app/logs
     ports:
       - "8000:8000"
