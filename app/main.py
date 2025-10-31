@@ -5,12 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import logger
 from app.database.mongodb import mongodb_manager
+from app.api.v1 import applications
 
 app = FastAPI(
     title="Face Authentication and De-duplication System",
     description="AI-powered face authentication system for large-scale public examinations",
     version="0.1.0",
 )
+
+# Include API routers
+app.include_router(applications.router, prefix="/api/v1")
 
 # CORS Configuration
 app.add_middleware(

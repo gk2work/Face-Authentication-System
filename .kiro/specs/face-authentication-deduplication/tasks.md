@@ -17,27 +17,27 @@
   - Add database connection error handling and retry logic
   - _Requirements: 2.4, 4.4_
 
-- [ ] 3. Build Application Ingestion Service
-  - [ ] 3.1 Create REST API endpoints for application submission
+- [x] 3. Build Application Ingestion Service
+  - [x] 3.1 Create REST API endpoints for application submission
     - Implement POST /api/v1/applications endpoint with request validation
     - Implement GET /api/v1/applications/{id}/status endpoint
     - Add input validation for applicant data and photograph format
     - _Requirements: 1.1_
 
-  - [ ] 3.2 Implement photograph validation and storage
+  - [x] 3.2 Implement photograph validation and storage
     - Write photograph quality pre-checks (format, size, resolution validation using Pillow)
     - Implement local file system storage for photographs (./storage/photographs/{application_id}.jpg)
     - Create file path generation and retrieval functions
     - Add file cleanup utilities for rejected applications
     - _Requirements: 6.1_
 
-  - [ ] 3.3 Implement simple queue mechanism
+  - [x] 3.3 Implement simple queue mechanism
     - Create in-memory queue using Python queue.Queue for local development
     - Implement async task processing with background workers
     - Add queue monitoring and status tracking
     - _Requirements: 1.1_
 
-  - [ ] 3.4 Create application record persistence
+  - [x] 3.4 Create application record persistence
     - Write application data to MongoDB applications collection
     - Generate unique application IDs using uuid.uuid4()
     - Store initial status as "pending" with created_at timestamp
