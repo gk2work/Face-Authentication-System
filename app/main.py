@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import logger
+from app.database.mongodb import mongodb_manager
 
 app = FastAPI(
     title="Face Authentication and De-duplication System",
@@ -27,12 +28,23 @@ async def startup_event():
     logger.info("Starting Face Authentication System")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"API Host: {settings.API_HOST}:{settings.API_PORT}")
+    
+    # Connect to MongoDB
+    try:
+        await mongodb_manager.connect()
+        logger.info("MongoDB connection established")
+    except Exception as e:
+        logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        raise
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on application shutdown"""
     logger.info("Shutting down Face Authentication System")
+    
+    # Disconnect from MongoDB
+    await mongodb_manager.disconnect()
 
 
 @app.get("/")
@@ -57,12 +69,15 @@ async def health_check():
 @app.get("/ready")
 async def readiness_check():
     """Readiness check endpoint"""
-    # TODO: Add checks for MongoDB, Redis, FAISS index
+    checks = {
+        "database": "ok" if await mongodb_manager.health_check() else "failed",
+        "cache": "ok",  # TODO: Add Redis health check
+        "vector_db": "ok"  # TODO: Add FAISS health check
+    }
+    
+    status = "ready" if all(v == "ok" for v in checks.values()) else "not_ready"
+    
     return {
-        "status": "ready",
-        "checks": {
-            "database": "ok",
-            "cache": "ok",
-            "vector_db": "ok"
-        }
+        "status": status,
+        "checks": checks
     }
