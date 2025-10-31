@@ -125,32 +125,32 @@
     - Verify threshold behavior with various confidence scores
     - _Requirements: 1.3, 1.5_
 
-- [ ] 6. Implement Identity Management Service
-  - [ ] 6.1 Create unique ID generation
+- [x] 6. Implement Identity Management Service
+  - [x] 6.1 Create unique ID generation
     - Implement UUID v4 generation using Python uuid library
     - Add uniqueness validation by checking MongoDB identities collection
     - Create Identity documents in MongoDB with unique_id field
     - _Requirements: 2.1, 2.2_
 
-  - [ ] 6.2 Build identity-embedding association
+  - [x] 6.2 Build identity-embedding association
     - Link embeddings to identity IDs in MongoDB identity_embeddings collection
     - Handle new identity creation for non-duplicates (insert new document)
     - Retrieve existing identity ID for duplicates (query by application_id)
     - _Requirements: 2.3, 2.4_
 
-  - [ ] 6.3 Implement duplicate application handling
+  - [x] 6.3 Implement duplicate application handling
     - Update application documents in MongoDB with matched identity_id
     - Mark applications as "duplicate" status using update_one
     - Store match confidence scores in processing_metadata field
     - _Requirements: 2.3, 2.5_
 
-  - [ ] 6.4 Add identity status management
+  - [x] 6.4 Add identity status management
     - Implement identity status tracking (active/suspended) in MongoDB
     - Create identity metadata storage in metadata field
     - Add identity update and query operations using pymongo
     - _Requirements: 2.5_
 
-  - [ ] 6.5 Write unit tests for identity management
+  - [x] 6.5 Write unit tests for identity management
     - Test unique ID generation and uniqueness
     - Test identity-embedding associations
     - Test duplicate linking logic
