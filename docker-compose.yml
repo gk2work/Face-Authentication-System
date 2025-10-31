@@ -1,41 +1,88 @@
+# Face Authentication and De-duplication System
+# Docker Compose configuration for local development
+
 version: "3.8"
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: face_auth_redis
+  # FastAPI Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: face-auth-api
     ports:
-      - "6379:6379"
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - MONGODB_URI=mongodb://mongodb:27017/face_auth
+      - MONGODB_DATABASE=face_auth
+      - JWT_SECRET_KEY=dev-secret-key-change-in-production
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - STORAGE_PATH=/app/storage
+      - VECTOR_DB_PATH=/app/storage/vector_db
+      - EMBEDDING_DIMENSION=512
+      - MIN_FACE_SIZE=80
+      - BLUR_THRESHOLD=100.0
+      - QUALITY_SCORE_THRESHOLD=0.5
+      - VERIFICATION_THRESHOLD=0.85
+      - MAX_QUEUE_SIZE=1000
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
+      - ./app:/app/app
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    depends_on:
+      - mongodb
+    networks:
+      - face-auth-network
     restart: unless-stopped
 
-  # Optional: Local MongoDB (uncomment if not using MongoDB Atlas)
-  # mongodb:
-  #   image: mongo:7
-  #   container_name: face_auth_mongodb
-  #   ports:
-  #     - "27017:27017"
-  #   volumes:
-  #     - mongodb_data:/data/db
-  #   environment:
-  #     MONGO_INITDB_ROOT_USERNAME: admin
-  #     MONGO_INITDB_ROOT_PASSWORD: password
-  #   healthcheck:
-  #     test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-  #     interval: 10s
-  #     timeout: 3s
-  #     retries: 3
-  #   restart: unless-stopped
+  # MongoDB Database
+  mongodb:
+    image: mongo:6
+    container_name: face-auth-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=face_auth
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-config:/data/configdb
+    networks:
+      - face-auth-network
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/face_auth --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MongoDB Express (Optional - for database management)
+  mongo-express:
+    image: mongo-express:latest
+    container_name: face-auth-mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://mongodb:27017/
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin
+    depends_on:
+      - mongodb
+    networks:
+      - face-auth-network
+    restart: unless-stopped
+    profiles:
+      - tools
 
 volumes:
-  redis_data:
+  mongodb-data:
     driver: local
-  # mongodb_data:
-  #   driver: local
+  mongodb-config:
+    driver: local
+
+networks:
+  face-auth-network:
+    driver: bridge

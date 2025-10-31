@@ -1,0 +1,20 @@
+# Development Docker Compose with hot reload
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./app:/app/app:ro
+      - ./storage:/app/storage
+      - ./logs:/app/logs
+    ports:
+      - "8000:8000"

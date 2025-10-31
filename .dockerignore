@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+!README.md
+
+# Storage (will be mounted as volumes)
+storage/
+logs/
+
+# Development
+.env.local
+.env.development
+*.log
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Kiro
+.kiro/
+
+# Misc
+*.bak
+*.tmp
+.cache/
