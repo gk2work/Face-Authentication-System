@@ -11,14 +11,17 @@ from facenet_pytorch import MTCNN, InceptionResnetV1
 from app.core.config import settings
 from app.core.logging import logger
 from app.services.metrics_service import metrics_service, MetricType
+from app.utils.error_responses import ErrorCode, create_error_response
 import time
 
 
 class FaceRecognitionError(Exception):
     """Custom exception for face recognition errors"""
-    def __init__(self, error_code: str, message: str):
+    def __init__(self, error_code: ErrorCode, message: str, details: Optional[Dict[str, Any]] = None):
         self.error_code = error_code
         self.message = message
+        self.details = details or {}
+        self.error_response = create_error_response(error_code, details)
         super().__init__(message)
 
 
@@ -75,16 +78,18 @@ class FaceRecognitionService:
             if boxes is None or len(boxes) == 0:
                 logger.warning(f"No face detected in image: {image_path}")
                 raise FaceRecognitionError(
-                    error_code="E001",
-                    message="No face detected in photograph. Please submit a clear photograph with a visible face."
+                    error_code=ErrorCode.E001,
+                    message="No face detected in photograph",
+                    details={"image_path": image_path}
                 )
             
             # Handle multiple faces detected
             if len(boxes) > 1:
                 logger.warning(f"Multiple faces detected in image: {image_path}. Count: {len(boxes)}")
                 raise FaceRecognitionError(
-                    error_code="E002",
-                    message=f"Multiple faces detected ({len(boxes)}). Please submit a photograph with only one face."
+                    error_code=ErrorCode.E002,
+                    message=f"Multiple faces detected ({len(boxes)})",
+                    details={"image_path": image_path, "face_count": len(boxes)}
                 )
             
             # Extract single face
@@ -101,8 +106,13 @@ class FaceRecognitionService:
             if face_width < self.min_face_size or face_height < self.min_face_size:
                 logger.warning(f"Face too small: {face_width}x{face_height}")
                 raise FaceRecognitionError(
-                    error_code="E004",
-                    message=f"Face size too small ({face_width}x{face_height}). Minimum required: {self.min_face_size}x{self.min_face_size} pixels."
+                    error_code=ErrorCode.E004,
+                    message=f"Face size too small",
+                    details={
+                        "face_width": face_width,
+                        "face_height": face_height,
+                        "min_required": self.min_face_size
+                    }
                 )
             
             # Create bounding box dictionary
@@ -125,8 +135,9 @@ class FaceRecognitionService:
         except Exception as e:
             logger.error(f"Face detection failed: {str(e)}")
             raise FaceRecognitionError(
-                error_code="E001",
-                message=f"Face detection failed: {str(e)}"
+                error_code=ErrorCode.E100,
+                message="Face detection processing failed",
+                details={"original_error": str(e)}
             )
 
     def assess_blur(self, image_path: str, bounding_box: Dict[str, int]) -> float:
@@ -163,8 +174,13 @@ class FaceRecognitionService:
             # Check if image is too blurry
             if blur_score < self.blur_threshold:
                 raise FaceRecognitionError(
-                    error_code="E003",
-                    message=f"Photograph is too blurry (score: {blur_score:.2f}). Please submit a clear, sharp photograph."
+                    error_code=ErrorCode.E003,
+                    message="Photograph quality too low",
+                    details={
+                        "blur_score": blur_score,
+                        "threshold": self.blur_threshold,
+                        "reason": "blur"
+                    }
                 )
             
             return blur_score
@@ -174,8 +190,9 @@ class FaceRecognitionService:
         except Exception as e:
             logger.error(f"Blur assessment failed: {str(e)}")
             raise FaceRecognitionError(
-                error_code="E003",
-                message=f"Quality assessment failed: {str(e)}"
+                error_code=ErrorCode.E100,
+                message="Quality assessment failed",
+                details={"original_error": str(e)}
             )
     
     def assess_lighting(self, image_path: str, bounding_box: Dict[str, int]) -> float:
@@ -259,8 +276,12 @@ class FaceRecognitionService:
             # Check if quality meets threshold
             if quality_score < self.quality_score_threshold:
                 raise FaceRecognitionError(
-                    error_code="E003",
-                    message=f"Photograph quality too low (score: {quality_score:.2f}). Please submit a high-quality photograph with good lighting and sharpness."
+                    error_code=ErrorCode.E003,
+                    message="Photograph quality too low",
+                    details={
+                        "quality_score": quality_score,
+                        "threshold": self.quality_score_threshold
+                    }
                 )
             
             return quality_score
@@ -270,8 +291,9 @@ class FaceRecognitionService:
         except Exception as e:
             logger.error(f"Quality assessment failed: {str(e)}")
             raise FaceRecognitionError(
-                error_code="E003",
-                message=f"Quality assessment failed: {str(e)}"
+                error_code=ErrorCode.E100,
+                message="Quality assessment failed",
+                details={"original_error": str(e)}
             )
 
     def generate_embedding(self, face_tensor: torch.Tensor) -> np.ndarray:
@@ -311,8 +333,9 @@ class FaceRecognitionService:
         except Exception as e:
             logger.error(f"Embedding generation failed: {str(e)}")
             raise FaceRecognitionError(
-                error_code="E005",
-                message=f"Failed to generate facial embedding: {str(e)}"
+                error_code=ErrorCode.E101,
+                message="Embedding generation failed",
+                details={"original_error": str(e)}
             )
     
     def process_photograph(self, image_path: str) -> Dict[str, Any]:
@@ -371,7 +394,7 @@ class FaceRecognitionService:
             # Record error metric
             metrics_service.record_error(
                 MetricType.FACE_RECOGNITION,
-                f"{e.error_code}: {e.message}"
+                f"{e.error_code.value}: {e.message}"
             )
             raise
         except Exception as e:
@@ -381,8 +404,9 @@ class FaceRecognitionService:
                 str(e)
             )
             raise FaceRecognitionError(
-                error_code="E005",
-                message=f"Photograph processing failed: {str(e)}"
+                error_code=ErrorCode.E100,
+                message="Photograph processing failed",
+                details={"original_error": str(e)}
             )
 
 

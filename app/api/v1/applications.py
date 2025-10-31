@@ -22,6 +22,7 @@ from app.core.logging import logger
 from app.services.queue_service import queue_service
 from app.services.audit_service import audit_service
 from app.services.metrics_service import metrics_service, MetricType
+from app.utils.error_responses import ErrorCode, create_error_response, handle_exception
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 limiter = Limiter(key_func=get_remote_address)
@@ -112,15 +113,20 @@ async def submit_application(
         
     except ValueError as e:
         logger.error(f"Validation error: {str(e)}")
+        error_response = create_error_response(
+            ErrorCode.E400,
+            details={"validation_error": str(e)}
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=error_response.dict()
         )
     except Exception as e:
         logger.error(f"Error submitting application: {str(e)}")
+        error_response = handle_exception(e, context="application_submission")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to submit application"
+            detail=error_response.dict()
         )
 
 
@@ -141,9 +147,13 @@ async def get_application_status(
         application = await app_repo.get_by_id(application_id)
         
         if not application:
+            error_response = create_error_response(
+                ErrorCode.E202,
+                details={"application_id": application_id}
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Application {application_id} not found"
+                detail=error_response.dict()
             )
         
         return ApplicationStatusResponse(
@@ -160,7 +170,8 @@ async def get_application_status(
         raise
     except Exception as e:
         logger.error(f"Error retrieving application status: {str(e)}")
+        error_response = handle_exception(e, context="get_application_status")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve application status"
+            detail=error_response.dict()
         )

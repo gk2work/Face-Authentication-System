@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.core.security import security_manager
 from app.database.mongodb import mongodb_manager
-from app.api.v1 import applications, auth, admin, monitoring
+from app.api.v1 import applications, auth, admin, monitoring, system
 from app.services.health_check_service import health_check_service
 from datetime import datetime
 
@@ -33,6 +33,7 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(applications.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(monitoring.router, prefix="/api/v1")
+app.include_router(system.router, prefix="/api/v1")
 
 # CORS Configuration
 # In production, replace with specific allowed origins

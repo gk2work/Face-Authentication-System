@@ -59,6 +59,17 @@ class Settings(BaseSettings):
     BLUR_THRESHOLD: float = 100.0
     QUALITY_SCORE_THRESHOLD: float = 0.7
     
+    # Circuit Breaker Configuration
+    CIRCUIT_BREAKER_FAILURE_THRESHOLD: int = 5
+    CIRCUIT_BREAKER_TIMEOUT_SECONDS: int = 60
+    CIRCUIT_BREAKER_SUCCESS_THRESHOLD: int = 2
+    
+    # Retry Configuration
+    MAX_RETRY_ATTEMPTS: int = 3
+    RETRY_INITIAL_DELAY: float = 1.0
+    RETRY_MAX_DELAY: float = 60.0
+    RETRY_EXPONENTIAL_BASE: float = 2.0
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
