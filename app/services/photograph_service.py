@@ -9,6 +9,7 @@ import io
 
 from app.core.config import settings
 from app.core.logging import logger
+from app.core.security import security_manager
 
 
 class PhotographValidationError(Exception):
@@ -196,7 +197,10 @@ class PhotographService:
             # Save image
             image.save(file_path, format=save_format, quality=95)
             
-            logger.info(f"Photograph saved: {file_path}")
+            # Set secure file permissions
+            security_manager.set_secure_file_permissions(str(file_path))
+            
+            logger.info(f"Photograph saved with secure permissions: {file_path}")
             
             return str(file_path)
             

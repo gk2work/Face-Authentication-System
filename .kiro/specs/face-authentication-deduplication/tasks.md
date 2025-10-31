@@ -183,27 +183,27 @@
     - Implement insert-only audit log entries (no updates/deletes)
     - _Requirements: 5.5, 4.4_
 
-- [ ] 8. Implement security and authentication
-  - [ ] 8.1 Set up basic authentication system
+- [x] 8. Implement security and authentication
+  - [x] 8.1 Set up basic authentication system
     - Implement simple JWT token generation using PyJWT library
     - Create login endpoint with username/password validation
     - Add JWT token validation middleware for protected routes
     - Store user credentials in MongoDB users collection (hashed with bcrypt)
     - _Requirements: 4.3_
 
-  - [ ] 8.2 Implement basic role-based access control
+  - [x] 8.2 Implement basic role-based access control
     - Define roles in user documents (admin, reviewer, auditor)
     - Create permission decorator for API endpoints
     - Implement role-based authorization checks in middleware
     - _Requirements: 4.3_
 
-  - [ ] 8.3 Add basic security measures
+  - [x] 8.3 Add basic security measures
     - Implement password hashing using bcrypt
     - Add rate limiting using slowapi library
     - Implement CORS configuration for API
     - _Requirements: 4.3_
 
-  - [ ] 8.4 Implement basic data protection
+  - [x] 8.4 Implement basic data protection
     - Configure HTTPS for API in production (using uvicorn with SSL)
     - Add environment variable protection for sensitive data
     - Implement secure file permissions for stored photographs

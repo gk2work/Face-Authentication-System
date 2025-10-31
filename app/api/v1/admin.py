@@ -7,8 +7,10 @@ from pydantic import BaseModel, Field
 
 from app.models.application import Application, ApplicationStatus
 from app.models.audit import AuditLog, EventType, ActorType, ResourceType
+from app.models.user import User, UserRole
 from app.database.mongodb import get_database
 from app.database.repositories import ApplicationRepository, AuditLogRepository
+from app.api.dependencies import require_admin_or_reviewer, require_admin, get_current_active_user
 from app.core.logging import logger
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -42,7 +44,6 @@ class OverrideDecisionRequest(BaseModel):
     """Request model for override decision"""
     decision: str = Field(..., description="Decision: 'approve_duplicate', 'reject_duplicate', 'flag_for_further_review'")
     justification: str = Field(..., min_length=10, description="Justification for the decision")
-    admin_id: str = Field(..., description="Admin user ID")
 
 
 class OverrideDecisionResponse(BaseModel):
@@ -69,6 +70,7 @@ async def get_duplicate_cases(
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     status_filter: Optional[str] = Query(None, description="Filter by status"),
     requires_review: Optional[bool] = Query(None, description="Filter by review requirement"),
+    current_user: User = Depends(require_admin_or_reviewer),
     db=Depends(get_database)
 ) -> PaginatedDuplicatesResponse:
     """
@@ -149,6 +151,7 @@ async def get_duplicate_cases(
 @router.get("/duplicates/{case_id}", response_model=DuplicateCaseDetailResponse)
 async def get_duplicate_case_details(
     case_id: str,
+    current_user: User = Depends(require_admin_or_reviewer),
     db=Depends(get_database)
 ) -> DuplicateCaseDetailResponse:
     """
@@ -254,6 +257,7 @@ async def get_duplicate_case_details(
 async def override_duplicate_decision(
     case_id: str,
     decision_request: OverrideDecisionRequest,
+    current_user: User = Depends(require_admin),
     db=Depends(get_database)
 ) -> OverrideDecisionResponse:
     """
@@ -262,7 +266,6 @@ async def override_duplicate_decision(
     - **case_id**: Unique case identifier (application ID)
     - **decision**: Override decision (approve_duplicate, reject_duplicate, flag_for_further_review)
     - **justification**: Justification for the override decision
-    - **admin_id**: Admin user ID making the decision
     
     Returns override decision result
     """
@@ -296,7 +299,7 @@ async def override_duplicate_decision(
             new_status = ApplicationStatus.DUPLICATE
             result_data = {
                 "final_status": ApplicationStatus.DUPLICATE,
-                "reviewed_by": decision_request.admin_id,
+                "reviewed_by": current_user.username,
                 "review_notes": decision_request.justification,
                 "reviewed_at": datetime.utcnow()
             }
@@ -306,14 +309,14 @@ async def override_duplicate_decision(
             result_data = {
                 "is_duplicate": False,
                 "final_status": ApplicationStatus.VERIFIED,
-                "reviewed_by": decision_request.admin_id,
+                "reviewed_by": current_user.username,
                 "review_notes": decision_request.justification,
                 "reviewed_at": datetime.utcnow()
             }
         elif decision_request.decision == "flag_for_further_review":
             # Keep current status but flag for review
             result_data = {
-                "reviewed_by": decision_request.admin_id,
+                "reviewed_by": current_user.username,
                 "review_notes": decision_request.justification,
                 "reviewed_at": datetime.utcnow()
             }
@@ -325,7 +328,7 @@ async def override_duplicate_decision(
         # Create audit log
         audit_log = AuditLog(
             event_type=EventType.DUPLICATE_OVERRIDE,
-            actor_id=decision_request.admin_id,
+            actor_id=current_user.username,
             actor_type=ActorType.ADMIN,
             resource_id=case_id,
             resource_type=ResourceType.APPLICATION,
@@ -334,7 +337,8 @@ async def override_duplicate_decision(
                 "decision": decision_request.decision,
                 "justification": decision_request.justification,
                 "previous_status": application.processing.status,
-                "new_status": new_status
+                "new_status": new_status,
+                "admin_email": current_user.email
             },
             success=True
         )

@@ -1,9 +1,11 @@
 """Application submission and status API endpoints"""
 
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from typing import Optional
 from datetime import datetime
 import uuid
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.models.application import (
     ApplicationCreate,
@@ -20,10 +22,13 @@ from app.core.logging import logger
 from app.services.queue_service import queue_service
 
 router = APIRouter(prefix="/applications", tags=["applications"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("", response_model=ApplicationStatusResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
 async def submit_application(
+    request: Request,
     application_data: ApplicationCreate,
     db=Depends(get_database)
 ) -> ApplicationStatusResponse:
