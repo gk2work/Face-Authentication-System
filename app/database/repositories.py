@@ -97,6 +97,58 @@ class ApplicationRepository:
             doc.pop("_id", None)
             applications.append(Application(**doc))
         return applications
+    
+    async def update_processing_status(self, application_id: str, status: ApplicationStatus,
+                                      processing_started_at: Optional[datetime] = None) -> bool:
+        """Update application processing status and start time"""
+        update_data = {
+            "processing.status": status,
+            "updated_at": datetime.utcnow()
+        }
+        
+        if processing_started_at:
+            update_data["processing.processing_started_at"] = processing_started_at
+        
+        result = await self.collection.update_one(
+            {"application_id": application_id},
+            {"$set": update_data}
+        )
+        return result.modified_count > 0
+    
+    async def update_face_recognition_results(self, application_id: str, embedding: List[float],
+                                             bounding_box: Dict[str, int], quality_score: float,
+                                             face_detected: bool) -> bool:
+        """Update application with face recognition results"""
+        update_data = {
+            "processing.face_detected": face_detected,
+            "processing.quality_score": quality_score,
+            "processing.embedding_generated": True,
+            "processing.processing_completed_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        result = await self.collection.update_one(
+            {"application_id": application_id},
+            {"$set": update_data}
+        )
+        return result.modified_count > 0
+    
+    async def update_processing_error(self, application_id: str, status: ApplicationStatus,
+                                     error_code: str, error_message: str) -> bool:
+        """Update application with processing error"""
+        update_data = {
+            "processing.status": status,
+            "processing.error_code": error_code,
+            "processing.error_message": error_message,
+            "processing.processing_completed_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        result = await self.collection.update_one(
+            {"application_id": application_id},
+            {"$set": update_data}
+        )
+        return result.modified_count > 0
 
 
 class IdentityRepository:

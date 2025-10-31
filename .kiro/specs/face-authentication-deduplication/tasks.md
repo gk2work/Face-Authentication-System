@@ -44,41 +44,41 @@
     - Implement MongoDB insert with error handling
     - _Requirements: 1.1, 4.4_
 
-- [ ] 4. Implement Face Recognition Service
-  - [ ] 4.1 Set up face detection model
+- [x] 4. Implement Face Recognition Service
+  - [x] 4.1 Set up face detection model
     - Install and configure facenet-pytorch or DeepFace library
     - Implement MTCNN face detection from facenet-pytorch
     - Extract face bounding box coordinates from photographs
     - Handle no-face and multiple-face scenarios with specific error codes (E001, E002)
     - _Requirements: 1.1, 6.1_
 
-  - [ ] 4.2 Implement photograph quality assessment
+  - [x] 4.2 Implement photograph quality assessment
     - Create blur detection using Laplacian variance method (OpenCV)
     - Add basic lighting quality check using histogram analysis
     - Implement face size validation (minimum 80x80 pixels)
     - Define quality threshold and rejection logic with error codes (E003, E004)
     - _Requirements: 6.1_
 
-  - [ ] 4.3 Build facial embedding generation
+  - [x] 4.3 Build facial embedding generation
     - Use InceptionResnetV1 from facenet-pytorch for feature extraction
     - Implement face alignment and normalization preprocessing
     - Generate 512-dimensional embedding vectors
     - Add L2 normalization to embeddings using numpy
     - _Requirements: 1.1_
 
-  - [ ] 4.4 Create async task processor
+  - [x] 4.4 Create async task processor
     - Implement background worker to process queued applications
     - Add error handling with retry logic (max 3 attempts)
     - Store failed applications with error details in MongoDB
     - _Requirements: 6.2_
 
-  - [ ] 4.5 Implement simple caching for embeddings
+  - [x] 4.5 Implement simple caching for embeddings
     - Use Python dictionary or Redis (if available) for embedding caching
     - Set cache TTL to 1 hour for recent embeddings
     - Implement cache key generation using application_id
     - _Requirements: 1.4_
 
-  - [ ] 4.6 Write unit tests for face recognition pipeline
+  - [x] 4.6 Write unit tests for face recognition pipeline
     - Test face detection with various photograph qualities
     - Test embedding generation consistency
     - Test error handling for edge cases
