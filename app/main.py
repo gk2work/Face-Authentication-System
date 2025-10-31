@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.core.security import security_manager
 from app.database.mongodb import mongodb_manager
-from app.api.v1 import applications, auth, admin, monitoring, system
+from app.api.v1 import applications, auth, admin, monitoring, system, face_recognition, websocket
 from app.services.health_check_service import health_check_service
 from datetime import datetime
 import time
@@ -105,6 +105,8 @@ async def log_requests(request: Request, call_next):
 # Include API routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(applications.router, prefix="/api/v1")
+app.include_router(face_recognition.router, prefix="/api/v1")
+app.include_router(websocket.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(monitoring.router, prefix="/api/v1")
 app.include_router(system.router, prefix="/api/v1")
@@ -140,7 +142,10 @@ async def startup_event():
     logger.info(f"API Host: {settings.API_HOST}:{settings.API_PORT}")
     
     # Validate environment variables
-    if not security_manager.validate_environment_variables():
+    if not security_manager.validate_environment_variables(
+        mongodb_uri=settings.MONGODB_URI,
+        secret_key=settings.SECRET_KEY
+    ):
         logger.error("Environment validation failed")
         raise RuntimeError("Required environment variables are not properly configured")
     

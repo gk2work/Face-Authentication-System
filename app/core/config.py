@@ -21,11 +21,13 @@ class Settings(BaseSettings):
     # Storage Configuration
     STORAGE_PATH: str = "./storage/photographs"
     VECTOR_DB_PATH: str = "./storage/vectors"
+    MODEL_STORAGE_PATH: str = "./storage/models"
     
     # Face Recognition Configuration
     FACE_MODEL: str = "facenet"
     VERIFICATION_THRESHOLD: float = 0.85
     EMBEDDING_DIMENSION: int = 512
+    FACE_DETECTION_MODEL: str = "mtcnn"  # or 'hog', 'cnn'
     
     # API Configuration
     API_HOST: str = "0.0.0.0"

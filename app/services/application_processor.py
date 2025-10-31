@@ -9,11 +9,14 @@ from app.core.logging import logger
 from app.services.queue_service import queue_service
 from app.services.photograph_service import photograph_service
 from app.services.face_recognition_service import face_recognition_service, FaceRecognitionError
+from app.services.face_detection_service import face_detection_service, FaceDetectionError
+from app.services.face_embedding_service import face_embedding_service
 from app.services.deduplication_service import deduplication_service
 from app.services.identity_service import identity_service
 from app.services.vector_index_service import vector_index_service
 from app.services.audit_service import audit_service
 from app.services.notification_service import notification_service
+from app.services.websocket_manager import websocket_manager
 from app.database.repositories import ApplicationRepository, IdentityRepository, EmbeddingRepository
 from app.models.application import ApplicationStatus
 from app.utils.error_responses import ErrorCode
@@ -64,6 +67,15 @@ class ApplicationProcessor:
             # ===== STAGE 1: Photograph Ingestion =====
             await self._update_stage(app_repo, application_id, "ingestion", ApplicationStatus.PROCESSING)
             
+            # Send WebSocket update
+            await websocket_manager.send_processing_update(
+                application_id=application_id,
+                stage="ingestion",
+                status="in_progress",
+                progress=10,
+                message="Saving photograph"
+            )
+            
             # Send processing notification
             if webhook_url:
                 await notification_service.notify_application_status(
@@ -81,8 +93,26 @@ class ApplicationProcessor:
             
             logger.info(f"[{application_id}] Stage 1: Photograph saved to {photograph_path}")
             
+            # Send WebSocket update
+            await websocket_manager.send_processing_update(
+                application_id=application_id,
+                stage="ingestion",
+                status="completed",
+                progress=20,
+                message="Photograph saved successfully"
+            )
+            
             # ===== STAGE 2: Face Recognition =====
             await self._update_stage(app_repo, application_id, "face_recognition", ApplicationStatus.PROCESSING)
+            
+            # Send WebSocket update
+            await websocket_manager.send_processing_update(
+                application_id=application_id,
+                stage="face_detection",
+                status="in_progress",
+                progress=30,
+                message="Detecting face in photograph"
+            )
             
             try:
                 face_result = face_recognition_service.process_photograph(photograph_path)
@@ -101,10 +131,31 @@ class ApplicationProcessor:
                     f"Quality: {face_result['quality_score']:.3f}"
                 )
                 
+                # Send WebSocket update
+                await websocket_manager.send_processing_update(
+                    application_id=application_id,
+                    stage="face_recognition",
+                    status="completed",
+                    progress=50,
+                    message="Face detected and embedding generated",
+                    details={
+                        "quality_score": face_result['quality_score'],
+                        "face_detected": face_result['face_detected']
+                    }
+                )
+                
             except FaceRecognitionError as e:
                 # Face recognition failed - reject application
                 await self._handle_rejection(
                     app_repo, application_id, e.error_code, e.message, db
+                )
+                
+                # Send WebSocket error update
+                await websocket_manager.send_error_update(
+                    application_id=application_id,
+                    error_code=e.error_code.value,
+                    error_message=e.message,
+                    details=e.details
                 )
                 
                 # Send rejection notification
@@ -128,6 +179,15 @@ class ApplicationProcessor:
             # ===== STAGE 3: De-duplication Check =====
             await self._update_stage(app_repo, application_id, "deduplication", ApplicationStatus.PROCESSING)
             
+            # Send WebSocket update
+            await websocket_manager.send_processing_update(
+                application_id=application_id,
+                stage="duplicate_detection",
+                status="in_progress",
+                progress=60,
+                message="Checking for duplicate applications"
+            )
+            
             embedding_array = np.array(face_result["embedding"], dtype=np.float32)
             
             dedup_result = await deduplication_service.detect_duplicates(
@@ -142,8 +202,30 @@ class ApplicationProcessor:
                 f"Matches: {len(dedup_result.matches)}"
             )
             
+            # Send WebSocket update
+            await websocket_manager.send_processing_update(
+                application_id=application_id,
+                stage="duplicate_detection",
+                status="completed",
+                progress=70,
+                message="Duplicate detection completed",
+                details={
+                    "is_duplicate": dedup_result.is_duplicate,
+                    "match_count": len(dedup_result.matches)
+                }
+            )
+            
             # ===== STAGE 4: Identity Management =====
             await self._update_stage(app_repo, application_id, "identity_management", ApplicationStatus.PROCESSING)
+            
+            # Send WebSocket update
+            await websocket_manager.send_processing_update(
+                application_id=application_id,
+                stage="identity_management",
+                status="in_progress",
+                progress=80,
+                message="Assigning identity"
+            )
             
             if dedup_result.is_duplicate:
                 # Existing identity found
@@ -225,6 +307,18 @@ class ApplicationProcessor:
             logger.info(
                 f"[{application_id}] Processing completed successfully. "
                 f"Status: {final_status.value}, Identity: {identity_id}"
+            )
+            
+            # Send WebSocket completion update
+            await websocket_manager.send_completion_update(
+                application_id=application_id,
+                result={
+                    "status": final_status.value,
+                    "identity_id": identity_id,
+                    "is_duplicate": dedup_result.is_duplicate,
+                    "requires_manual_review": dedup_result.requires_manual_review,
+                    "confidence_score": dedup_result.matches[0].confidence_score if dedup_result.matches else 1.0
+                }
             )
             
             # Send completion notification

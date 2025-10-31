@@ -1,7 +1,7 @@
 # Web Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
 
 # Database
 pymongo==4.6.0
@@ -9,13 +9,13 @@ motor==3.3.2
 
 # Face Recognition
 facenet-pytorch==2.5.3
-torch==2.1.0
-torchvision==0.16.0
-opencv-python==4.8.1.78
-Pillow==10.1.0
+torch>=2.0.0
+torchvision>=0.15.0
+opencv-python>=4.8.0
+Pillow>=10.0.0
 
 # Vector Database
-faiss-cpu==1.7.4
+faiss-cpu>=1.7.4
 
 # Caching and Queue
 redis==5.0.1
@@ -29,8 +29,8 @@ passlib==1.7.4
 
 # Utilities
 python-dotenv==1.0.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
+pydantic>=2.8.0
+pydantic-settings>=2.3.0
 
 # Logging
 loguru==0.7.2

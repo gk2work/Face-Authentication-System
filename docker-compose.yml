@@ -59,6 +59,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: face-auth-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - face-auth-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # MongoDB Express (Optional - for database management)
   mongo-express:
     image: mongo-express:latest
@@ -81,6 +98,8 @@ volumes:
   mongodb-data:
     driver: local
   mongodb-config:
+    driver: local
+  redis-data:
     driver: local
 
 networks:

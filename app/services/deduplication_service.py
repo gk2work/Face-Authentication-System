@@ -52,7 +52,21 @@ class DuplicateDetectionResult:
 
 
 class DeduplicationService:
-    """Service for detecting duplicate applications using facial embeddings"""
+    """
+    Service for detecting duplicate applications using facial embeddings.
+    
+    This service implements:
+    1. Similarity comparison using cosine similarity
+    2. Threshold-based matching logic with configurable thresholds
+    3. Match ranking by confidence score
+    4. Confidence band classification (HIGH, MEDIUM, LOW, UNIQUE)
+    
+    Thresholds:
+    - High confidence: >= 0.95 (definite match)
+    - Medium confidence: 0.85-0.95 (likely match)
+    - Verification threshold: 0.85 (minimum for duplicate)
+    - Borderline margin: ±0.02 around threshold (requires manual review)
+    """
     
     def __init__(self):
         self.verification_threshold = settings.VERIFICATION_THRESHOLD  # 0.85
@@ -214,9 +228,37 @@ class DeduplicationService:
             logger.error(f"Duplicate detection failed for application {application_id}: {str(e)}")
             raise
     
+    def calculate_cosine_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
+        """
+        Calculate cosine similarity between two embeddings.
+        
+        This is the core similarity metric used for face matching.
+        Cosine similarity measures the cosine of the angle between two vectors,
+        ranging from -1 (opposite) to 1 (identical).
+        
+        Args:
+            embedding1: First embedding vector (should be normalized)
+            embedding2: Second embedding vector (should be normalized)
+            
+        Returns:
+            Cosine similarity score (0-1 range, clamped)
+        """
+        # Ensure embeddings are normalized
+        emb1_norm = embedding1 / (np.linalg.norm(embedding1) + 1e-8)
+        emb2_norm = embedding2 / (np.linalg.norm(embedding2) + 1e-8)
+        
+        # Calculate cosine similarity using dot product
+        similarity = np.dot(emb1_norm, emb2_norm)
+        
+        # Clamp to [0, 1] range for consistency
+        similarity = max(0.0, min(1.0, float(similarity)))
+        
+        return similarity
+    
     def compare_embeddings(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
         """
-        Compare two embeddings and return similarity score
+        Compare two embeddings and return similarity score.
+        Alias for calculate_cosine_similarity for backward compatibility.
         
         Args:
             embedding1: First embedding vector
@@ -225,17 +267,7 @@ class DeduplicationService:
         Returns:
             Cosine similarity score (0-1)
         """
-        # Normalize embeddings
-        emb1_norm = embedding1 / np.linalg.norm(embedding1)
-        emb2_norm = embedding2 / np.linalg.norm(embedding2)
-        
-        # Calculate cosine similarity
-        similarity = np.dot(emb1_norm, emb2_norm)
-        
-        # Clamp to [0, 1] range
-        similarity = max(0.0, min(1.0, float(similarity)))
-        
-        return similarity
+        return self.calculate_cosine_similarity(embedding1, embedding2)
     
     def verify_match(self, application_id1: str, application_id2: str) -> Tuple[bool, float]:
         """
@@ -274,6 +306,26 @@ class DeduplicationService:
             logger.error(f"Match verification failed: {str(e)}")
             raise
     
+    def rank_matches_by_confidence(self, matches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Rank matches by confidence score in descending order.
+        
+        Args:
+            matches: List of match dictionaries with 'similarity' scores
+            
+        Returns:
+            Sorted list of matches (highest confidence first)
+        """
+        # Sort by similarity score in descending order
+        ranked_matches = sorted(matches, key=lambda x: x.get("similarity", 0.0), reverse=True)
+        
+        # Add rank information
+        for i, match in enumerate(ranked_matches, start=1):
+            match["rank"] = i
+            match["confidence_band"] = self._classify_confidence(match["similarity"])
+        
+        return ranked_matches
+    
     def get_duplicate_candidates(self, application_id: str, 
                                  include_low_confidence: bool = False) -> List[Dict[str, Any]]:
         """
@@ -284,7 +336,7 @@ class DeduplicationService:
             include_low_confidence: Include matches below verification threshold
             
         Returns:
-            List of candidate matches with metadata
+            List of candidate matches with metadata, ranked by confidence
         """
         try:
             # Search using existing application
@@ -296,14 +348,16 @@ class DeduplicationService:
                 threshold=threshold
             )
             
-            # Add confidence band classification
-            for match in matches:
-                match["confidence_band"] = self._classify_confidence(match["similarity"])
+            # Rank matches by confidence score
+            ranked_matches = self.rank_matches_by_confidence(matches)
+            
+            # Add additional metadata
+            for match in ranked_matches:
                 match["is_borderline"] = self._is_borderline_match(match["similarity"])
             
-            logger.info(f"Found {len(matches)} duplicate candidates for application {application_id}")
+            logger.info(f"Found {len(ranked_matches)} duplicate candidates for application {application_id}")
             
-            return matches
+            return ranked_matches
             
         except Exception as e:
             logger.error(f"Failed to get duplicate candidates: {str(e)}")

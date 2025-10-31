@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any
 
 from app.core.logging import logger
-from app.api.dependencies import get_current_admin_user
+from app.api.dependencies import require_admin
+from app.models.user import User
 from app.utils.resilience import get_resilience_status
 from app.utils.retry import dead_letter_queue
 from app.utils.circuit_breaker import circuit_breaker_registry
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/system", tags=["system"])
 
 @router.get("/resilience", response_model=Dict[str, Any])
 async def get_resilience_info(
-    current_user: dict = Depends(get_current_admin_user)
+    current_user: User = Depends(require_admin)
 ) -> Dict[str, Any]:
     """
     Get resilience status including circuit breakers and dead letter queue
@@ -33,7 +34,7 @@ async def get_resilience_info(
 
 @router.get("/circuit-breakers", response_model=Dict[str, Any])
 async def get_circuit_breakers(
-    current_user: dict = Depends(get_current_admin_user)
+    current_user: User = Depends(require_admin)
 ) -> Dict[str, Any]:
     """
     Get status of all circuit breakers
@@ -52,7 +53,7 @@ async def get_circuit_breakers(
 
 @router.post("/circuit-breakers/reset", response_model=Dict[str, str])
 async def reset_circuit_breakers(
-    current_user: dict = Depends(get_current_admin_user)
+    current_user: User = Depends(require_admin)
 ) -> Dict[str, str]:
     """
     Reset all circuit breakers to closed state
@@ -61,7 +62,7 @@ async def reset_circuit_breakers(
     """
     try:
         circuit_breaker_registry.reset_all()
-        logger.info(f"Circuit breakers reset by admin: {current_user.get('username')}")
+        logger.info(f"Circuit breakers reset by admin: {current_user.username}")
         return {"message": "All circuit breakers reset successfully"}
     except Exception as e:
         logger.error(f"Error resetting circuit breakers: {str(e)}")
@@ -73,7 +74,7 @@ async def reset_circuit_breakers(
 
 @router.get("/dead-letter-queue", response_model=Dict[str, Any])
 async def get_dead_letter_queue_status(
-    current_user: dict = Depends(get_current_admin_user)
+    current_user: User = Depends(require_admin)
 ) -> Dict[str, Any]:
     """
     Get dead letter queue statistics
@@ -92,7 +93,7 @@ async def get_dead_letter_queue_status(
 
 @router.get("/dead-letter-queue/items")
 async def get_dead_letter_queue_items(
-    current_user: dict = Depends(get_current_admin_user)
+    current_user: User = Depends(require_admin)
 ):
     """
     Get all items in dead letter queue
@@ -111,7 +112,7 @@ async def get_dead_letter_queue_items(
 
 @router.delete("/dead-letter-queue", response_model=Dict[str, str])
 async def clear_dead_letter_queue(
-    current_user: dict = Depends(get_current_admin_user)
+    current_user: User = Depends(require_admin)
 ) -> Dict[str, str]:
     """
     Clear all items from dead letter queue
@@ -121,7 +122,7 @@ async def clear_dead_letter_queue(
     try:
         count = dead_letter_queue.get_count()
         dead_letter_queue.clear()
-        logger.info(f"Dead letter queue cleared by admin: {current_user.get('username')} ({count} items)")
+        logger.info(f"Dead letter queue cleared by admin: {current_user.username} ({count} items)")
         return {"message": f"Dead letter queue cleared successfully ({count} items removed)"}
     except Exception as e:
         logger.error(f"Error clearing dead letter queue: {str(e)}")
@@ -134,7 +135,7 @@ async def clear_dead_letter_queue(
 @router.delete("/dead-letter-queue/{index}", response_model=Dict[str, Any])
 async def remove_dead_letter_item(
     index: int,
-    current_user: dict = Depends(get_current_admin_user)
+    current_user: User = Depends(require_admin)
 ) -> Dict[str, Any]:
     """
     Remove specific item from dead letter queue
@@ -149,7 +150,7 @@ async def remove_dead_letter_item(
                 detail=f"Item at index {index} not found"
             )
         
-        logger.info(f"Dead letter queue item {index} removed by admin: {current_user.get('username')}")
+        logger.info(f"Dead letter queue item {index} removed by admin: {current_user.username}")
         return {"message": "Item removed successfully", "item": item}
     except HTTPException:
         raise

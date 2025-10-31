@@ -67,32 +67,33 @@ class SecurityManager:
             return False
     
     @staticmethod
-    def validate_environment_variables() -> bool:
+    def validate_environment_variables(mongodb_uri: str = None, secret_key: str = None) -> bool:
         """
         Validate that required sensitive environment variables are set
         
+        Args:
+            mongodb_uri: MongoDB URI from settings
+            secret_key: Secret key from settings
+            
         Returns:
             True if all required variables are set, False otherwise
         """
-        required_vars = [
-            "MONGODB_URI",
-            "SECRET_KEY",
-        ]
+        # If parameters provided, use them; otherwise fall back to os.getenv
+        mongodb_uri = mongodb_uri or os.getenv("MONGODB_URI")
+        secret_key = secret_key or os.getenv("SECRET_KEY")
         
         missing_vars = []
         weak_vars = []
         
-        for var in required_vars:
-            value = os.getenv(var)
-            
-            if not value:
-                missing_vars.append(var)
-            elif var == "SECRET_KEY":
-                # Check if SECRET_KEY is strong enough
-                if len(value) < 32:
-                    weak_vars.append(f"{var} (too short, minimum 32 characters)")
-                elif value == "your-secret-key-change-in-production":
-                    weak_vars.append(f"{var} (using default value)")
+        if not mongodb_uri:
+            missing_vars.append("MONGODB_URI")
+        
+        if not secret_key:
+            missing_vars.append("SECRET_KEY")
+        elif len(secret_key) < 32:
+            weak_vars.append("SECRET_KEY (too short, minimum 32 characters)")
+        elif secret_key == "your-secret-key-change-in-production":
+            weak_vars.append("SECRET_KEY (using default value)")
         
         if missing_vars:
             logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")

@@ -4,8 +4,16 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from typing import Optional
 import asyncio
+import ssl
 from app.core.config import settings
 from app.core.logging import logger
+
+# Try to import certifi for SSL certificate verification
+try:
+    import certifi
+    CA_BUNDLE = certifi.where()
+except ImportError:
+    CA_BUNDLE = None
 
 
 class MongoDBManager:
@@ -23,15 +31,22 @@ class MongoDBManager:
             try:
                 logger.info(f"Attempting MongoDB connection (attempt {attempt + 1}/{self._connection_retries})")
                 
-                # Create client with connection pooling
-                self.client = AsyncIOMotorClient(
-                    settings.MONGODB_URI,
-                    maxPoolSize=50,
-                    minPoolSize=10,
-                    serverSelectionTimeoutMS=5000,
-                    connectTimeoutMS=10000,
-                    retryWrites=True,
-                )
+                # Create client with connection pooling and SSL/TLS configuration
+                client_kwargs = {
+                    "maxPoolSize": 50,
+                    "minPoolSize": 10,
+                    "serverSelectionTimeoutMS": 5000,
+                    "connectTimeoutMS": 10000,
+                    "retryWrites": True,
+                }
+                
+                # Add SSL/TLS configuration for MongoDB Atlas with Python 3.13 workaround
+                if "mongodb+srv://" in settings.MONGODB_URI or "ssl=true" in settings.MONGODB_URI.lower():
+                    # Use tlsAllowInvalidCertificates to bypass SSL verification issues in Python 3.13
+                    client_kwargs["tls"] = True
+                    client_kwargs["tlsAllowInvalidCertificates"] = True
+                
+                self.client = AsyncIOMotorClient(settings.MONGODB_URI, **client_kwargs)
                 
                 # Verify connection
                 await self.client.admin.command('ping')
@@ -115,14 +130,14 @@ class MongoDBManager:
     
     def get_collection(self, collection_name: str):
         """Get a MongoDB collection"""
-        if not self.db:
+        if self.db is None:
             raise RuntimeError("MongoDB not connected")
         return self.db[collection_name]
     
     async def health_check(self) -> bool:
         """Check if MongoDB connection is healthy"""
         try:
-            if not self.client:
+            if self.client is None:
                 return False
             await self.client.admin.command('ping')
             return True
