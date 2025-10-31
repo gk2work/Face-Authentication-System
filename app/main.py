@@ -14,19 +14,93 @@ from app.database.mongodb import mongodb_manager
 from app.api.v1 import applications, auth, admin, monitoring, system
 from app.services.health_check_service import health_check_service
 from datetime import datetime
+import time
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
 
 app = FastAPI(
     title="Face Authentication and De-duplication System",
-    description="AI-powered face authentication system for large-scale public examinations",
-    version="0.1.0",
+    description="""
+    ## AI-powered Face Authentication System
+    
+    This system provides face authentication and de-duplication services for large-scale public examinations.
+    
+    ### Key Features:
+    * **Face Recognition**: Detect and extract facial features from photographs
+    * **De-duplication**: Identify duplicate applications using facial similarity
+    * **Identity Management**: Assign and manage unique identity IDs
+    * **Audit Logging**: Comprehensive audit trail for all operations
+    * **Performance Optimized**: High-throughput processing with caching and batch operations
+    
+    ### API Endpoints:
+    * **Applications**: Submit and track application processing
+    * **Authentication**: Secure API access with JWT tokens
+    * **Admin**: Administrative operations and overrides
+    * **Monitoring**: System health and metrics
+    * **System**: Health checks and readiness probes
+    
+    ### Rate Limiting:
+    Most endpoints are rate-limited to ensure fair usage and system stability.
+    """,
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    contact={
+        "name": "Face Authentication System",
+        "email": "support@faceauth.example.com",
+    },
+    license_info={
+        "name": "Proprietary",
+    },
 )
 
 # Add rate limiter to app state
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# Request/Response Logging Middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests and outgoing responses"""
+    # Generate request ID
+    request_id = f"{int(time.time() * 1000)}-{id(request)}"
+    
+    # Log request
+    logger.info(
+        f"Request started | ID: {request_id} | Method: {request.method} | "
+        f"Path: {request.url.path} | Client: {request.client.host if request.client else 'unknown'}"
+    )
+    
+    # Process request and measure time
+    start_time = time.time()
+    
+    try:
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        # Log response
+        logger.info(
+            f"Request completed | ID: {request_id} | Status: {response.status_code} | "
+            f"Duration: {process_time:.3f}s"
+        )
+        
+        # Add custom headers
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Process-Time"] = f"{process_time:.3f}"
+        
+        return response
+        
+    except Exception as e:
+        process_time = time.time() - start_time
+        logger.error(
+            f"Request failed | ID: {request_id} | Error: {str(e)} | "
+            f"Duration: {process_time:.3f}s"
+        )
+        raise
+
 
 # Include API routers
 app.include_router(auth.router, prefix="/api/v1")
@@ -102,63 +176,122 @@ async def root():
     }
 
 
-@app.get("/health")
+@app.get("/health", tags=["System"])
 async def health_check():
     """
-    Health check endpoint
+    Health check endpoint for load balancers
     
-    Returns basic health status (200 for healthy, 503 for unhealthy)
+    Returns basic health status:
+    - 200: Service is healthy
+    - 503: Service is unhealthy
+    
+    This endpoint is designed for load balancer health checks.
+    It performs a quick database connectivity check.
     """
+    from fastapi.responses import JSONResponse
+    
     try:
         # Quick database check
         db_healthy = await mongodb_manager.health_check()
         
         if db_healthy:
-            return {
-                "status": "healthy",
-                "service": "face-auth-system",
-                "timestamp": datetime.utcnow().isoformat()
-            }
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "healthy",
+                    "service": "face-auth-system",
+                    "version": "1.0.0",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
         else:
-            return {
-                "status": "unhealthy",
-                "service": "face-auth-system",
-                "message": "Database connection failed",
-                "timestamp": datetime.utcnow().isoformat()
-            }
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "unhealthy",
+                    "service": "face-auth-system",
+                    "message": "Database connection failed",
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            )
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
-        return {
-            "status": "unhealthy",
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "unhealthy",
+                "service": "face-auth-system",
+                "message": str(e),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
+
+
+@app.get("/live", tags=["System"])
+async def liveness_check():
+    """
+    Liveness check endpoint for Kubernetes
+    
+    Returns 200 if the application is running.
+    This is a simple check that doesn't verify dependencies.
+    
+    Use this for Kubernetes liveness probes to detect if the
+    application needs to be restarted.
+    """
+    from fastapi.responses import JSONResponse
+    
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "alive",
             "service": "face-auth-system",
-            "message": str(e),
+            "version": "1.0.0",
             "timestamp": datetime.utcnow().isoformat()
         }
+    )
 
 
-@app.get("/ready")
+@app.get("/ready", tags=["System"])
 async def readiness_check():
     """
-    Readiness check endpoint
+    Readiness check endpoint for Kubernetes and load balancers
     
-    Returns comprehensive readiness status including all components
-    (200 for ready, 503 for not ready)
+    Returns comprehensive readiness status:
+    - 200: Service is ready to accept traffic
+    - 503: Service is not ready
+    
+    This endpoint performs comprehensive checks including:
+    - Database connectivity
+    - Service dependencies
+    - System resources
+    
+    Use this for Kubernetes readiness probes and load balancer health checks
+    that need detailed status information.
     """
+    from fastapi.responses import JSONResponse
+    
     try:
         health_status = await health_check_service.get_comprehensive_health(mongodb_manager)
         health_status["timestamp"] = datetime.utcnow().isoformat()
+        health_status["version"] = "1.0.0"
         
         # Return 503 if unhealthy
         status_code = 200 if health_status["status"] in ["healthy", "degraded"] else 503
         
-        return health_status
+        return JSONResponse(
+            status_code=status_code,
+            content=health_status
+        )
     except Exception as e:
         logger.error(f"Readiness check failed: {str(e)}")
-        return {
-            "status": "not_ready",
-            "message": str(e),
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "message": str(e),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        )
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
