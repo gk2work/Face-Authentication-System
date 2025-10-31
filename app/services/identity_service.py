@@ -8,6 +8,7 @@ from app.core.logging import logger
 from app.database.repositories import IdentityRepository, ApplicationRepository
 from app.models.identity import Identity, IdentityStatus
 from app.models.application import ApplicationStatus
+from app.services.audit_service import audit_service
 
 
 class IdentityService:
@@ -78,6 +79,13 @@ class IdentityService:
             await identity_repo.create(identity)
             
             logger.info(f"Created new identity: {unique_id} for application: {application_id}")
+            
+            # Log identity issuance to audit trail
+            await audit_service.log_identity_issued(
+                db=db,
+                application_id=application_id,
+                identity_id=unique_id
+            )
             
             return identity
             

@@ -10,6 +10,7 @@ from app.core.logging import logger
 from app.services.vector_index_service import vector_index_service
 from app.services.performance_monitor import performance_monitor, PerformanceTimer, MetricType
 from app.models.application import MatchResult
+from app.services.audit_service import audit_service
 
 
 class ConfidenceBand(str, Enum):
@@ -110,8 +111,9 @@ class DeduplicationService:
         ]
         return len(high_matches) > 1
     
-    def detect_duplicates(self, embedding: np.ndarray, 
-                         application_id: Optional[str] = None) -> DuplicateDetectionResult:
+    async def detect_duplicates(self, embedding: np.ndarray, 
+                         application_id: Optional[str] = None,
+                         db = None) -> DuplicateDetectionResult:
         """
         Detect duplicate applications using facial embedding
         
@@ -192,6 +194,19 @@ class DeduplicationService:
                     "match_count": len(result.matches)
                 }
             )
+            
+            # Log duplicate detection event to audit trail
+            if db and application_id:
+                matched_app_id = result.matches[0].matched_application_id if result.matches else None
+                confidence = result.matches[0].confidence_score if result.matches else 0.0
+                
+                await audit_service.log_duplicate_detection(
+                    db=db,
+                    application_id=application_id,
+                    matched_application_id=matched_app_id,
+                    confidence_score=confidence,
+                    is_duplicate=result.is_duplicate
+                )
             
             return result
             

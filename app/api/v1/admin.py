@@ -1,9 +1,11 @@
 """Admin API endpoints for duplicate review and override"""
 
-from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query, Response
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
+import csv
+import io
 
 from app.models.application import Application, ApplicationStatus
 from app.models.audit import AuditLog, EventType, ActorType, ResourceType
@@ -12,6 +14,7 @@ from app.database.mongodb import get_database
 from app.database.repositories import ApplicationRepository, AuditLogRepository
 from app.api.dependencies import require_admin_or_reviewer, require_admin, get_current_active_user
 from app.core.logging import logger
+from app.services.audit_service import audit_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -325,24 +328,17 @@ async def override_duplicate_decision(
         await app_repo.update_status(case_id, new_status)
         await app_repo.update_result(case_id, result_data)
         
-        # Create audit log
-        audit_log = AuditLog(
-            event_type=EventType.DUPLICATE_OVERRIDE,
-            actor_id=current_user.username,
-            actor_type=ActorType.ADMIN,
-            resource_id=case_id,
-            resource_type=ResourceType.APPLICATION,
-            action=f"Override decision: {decision_request.decision}",
-            details={
-                "decision": decision_request.decision,
-                "justification": decision_request.justification,
-                "previous_status": application.processing.status,
-                "new_status": new_status,
-                "admin_email": current_user.email
-            },
-            success=True
+        # Create audit log for override decision
+        await audit_service.log_override_decision(
+            db=db,
+            application_id=case_id,
+            admin_id=current_user.username,
+            decision=decision_request.decision,
+            justification=decision_request.justification,
+            previous_status=application.processing.status,
+            new_status=new_status,
+            ip_address=None  # Could be extracted from request if needed
         )
-        await audit_repo.create(audit_log)
         
         logger.info(f"Override decision applied: {case_id} - {decision_request.decision}")
         
@@ -361,4 +357,218 @@ async def override_duplicate_decision(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to apply override decision"
+        )
+
+
+
+class AuditLogResponse(BaseModel):
+    """Response model for audit log entry"""
+    event_type: str
+    timestamp: datetime
+    actor_id: str
+    actor_type: str
+    resource_id: Optional[str]
+    resource_type: Optional[str]
+    action: str
+    details: Dict[str, Any]
+    ip_address: Optional[str]
+    success: bool
+    error_message: Optional[str]
+
+
+class PaginatedAuditLogsResponse(BaseModel):
+    """Paginated response for audit logs"""
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+    logs: List[AuditLogResponse]
+
+
+@router.get("/audit-logs", response_model=PaginatedAuditLogsResponse)
+async def get_audit_logs(
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(50, ge=1, le=1000, description="Items per page"),
+    event_type: Optional[str] = Query(None, description="Filter by event type"),
+    actor_id: Optional[str] = Query(None, description="Filter by actor ID"),
+    resource_id: Optional[str] = Query(None, description="Filter by resource ID"),
+    start_date: Optional[datetime] = Query(None, description="Filter by start date (ISO format)"),
+    end_date: Optional[datetime] = Query(None, description="Filter by end date (ISO format)"),
+    current_user: User = Depends(require_admin_or_reviewer),
+    db=Depends(get_database)
+) -> PaginatedAuditLogsResponse:
+    """
+    Query audit logs with filtering and pagination
+    
+    - **page**: Page number (starting from 1)
+    - **page_size**: Number of items per page (max 1000)
+    - **event_type**: Optional filter by event type
+    - **actor_id**: Optional filter by actor ID
+    - **resource_id**: Optional filter by resource ID
+    - **start_date**: Optional filter by start date
+    - **end_date**: Optional filter by end date
+    
+    Returns paginated list of audit log entries
+    """
+    try:
+        audit_repo = AuditLogRepository(db)
+        
+        # Build filters
+        filters = {}
+        if event_type:
+            filters["event_type"] = event_type
+        if actor_id:
+            filters["actor_id"] = actor_id
+        if resource_id:
+            filters["resource_id"] = resource_id
+        if start_date:
+            filters["start_date"] = start_date
+        if end_date:
+            filters["end_date"] = end_date
+        
+        # Calculate skip value for pagination
+        skip = (page - 1) * page_size
+        
+        # Query audit logs
+        logs, total = await audit_repo.query(filters, limit=page_size, skip=skip)
+        
+        # Convert to response models
+        log_responses = [
+            AuditLogResponse(
+                event_type=log.event_type,
+                timestamp=log.timestamp,
+                actor_id=log.actor_id,
+                actor_type=log.actor_type,
+                resource_id=log.resource_id,
+                resource_type=log.resource_type,
+                action=log.action,
+                details=log.details,
+                ip_address=log.ip_address,
+                success=log.success,
+                error_message=log.error_message
+            )
+            for log in logs
+        ]
+        
+        # Calculate total pages
+        total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+        
+        logger.info(f"Retrieved {len(logs)} audit logs (page {page}/{total_pages}, total: {total})")
+        
+        return PaginatedAuditLogsResponse(
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+            logs=log_responses
+        )
+        
+    except Exception as e:
+        logger.error(f"Error retrieving audit logs: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve audit logs"
+        )
+
+
+@router.get("/audit-logs/export")
+async def export_audit_logs_csv(
+    event_type: Optional[str] = Query(None, description="Filter by event type"),
+    actor_id: Optional[str] = Query(None, description="Filter by actor ID"),
+    resource_id: Optional[str] = Query(None, description="Filter by resource ID"),
+    start_date: Optional[datetime] = Query(None, description="Filter by start date (ISO format)"),
+    end_date: Optional[datetime] = Query(None, description="Filter by end date (ISO format)"),
+    limit: int = Query(10000, ge=1, le=100000, description="Maximum number of records to export"),
+    current_user: User = Depends(require_admin),
+    db=Depends(get_database)
+):
+    """
+    Export audit logs to CSV format
+    
+    - **event_type**: Optional filter by event type
+    - **actor_id**: Optional filter by actor ID
+    - **resource_id**: Optional filter by resource ID
+    - **start_date**: Optional filter by start date
+    - **end_date**: Optional filter by end date
+    - **limit**: Maximum number of records (max 100,000)
+    
+    Returns CSV file with audit log entries
+    """
+    try:
+        audit_repo = AuditLogRepository(db)
+        
+        # Build filters
+        filters = {}
+        if event_type:
+            filters["event_type"] = event_type
+        if actor_id:
+            filters["actor_id"] = actor_id
+        if resource_id:
+            filters["resource_id"] = resource_id
+        if start_date:
+            filters["start_date"] = start_date
+        if end_date:
+            filters["end_date"] = end_date
+        
+        # Query audit logs
+        logs, total = await audit_repo.query(filters, limit=limit, skip=0)
+        
+        # Create CSV in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            "Timestamp",
+            "Event Type",
+            "Actor ID",
+            "Actor Type",
+            "Resource ID",
+            "Resource Type",
+            "Action",
+            "Success",
+            "IP Address",
+            "Error Message",
+            "Details"
+        ])
+        
+        # Write data rows
+        for log in logs:
+            writer.writerow([
+                log.timestamp.isoformat(),
+                log.event_type,
+                log.actor_id,
+                log.actor_type,
+                log.resource_id or "",
+                log.resource_type or "",
+                log.action,
+                "Yes" if log.success else "No",
+                log.ip_address or "",
+                log.error_message or "",
+                str(log.details) if log.details else ""
+            ])
+        
+        # Get CSV content
+        csv_content = output.getvalue()
+        output.close()
+        
+        # Generate filename with timestamp
+        filename = f"audit_logs_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        logger.info(f"Exported {len(logs)} audit logs to CSV by {current_user.username}")
+        
+        # Return CSV response
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error exporting audit logs: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to export audit logs"
         )

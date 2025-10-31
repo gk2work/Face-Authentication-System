@@ -20,6 +20,7 @@ from app.database.mongodb import get_database
 from app.database.repositories import ApplicationRepository, AuditLogRepository
 from app.core.logging import logger
 from app.services.queue_service import queue_service
+from app.services.audit_service import audit_service
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 limiter = Limiter(key_func=get_remote_address)
@@ -75,23 +76,14 @@ async def submit_application(
         
         logger.info(f"Application created in database: {application_id}")
         
-        # Create audit log
-        audit_repo = AuditLogRepository(db)
-        audit_log = AuditLog(
-            event_type=EventType.APPLICATION_SUBMITTED,
-            actor_id="system",
-            actor_type=ActorType.API,
-            resource_id=application_id,
-            resource_type=ResourceType.APPLICATION,
-            action="Application submitted for processing",
-            details={
-                "applicant_email": application_data.applicant_data.email,
-                "applicant_name": application_data.applicant_data.name,
-                "photograph_format": application_data.photograph_format
-            },
-            success=True
+        # Create audit log for application submission
+        await audit_service.log_application_submission(
+            db=db,
+            application_id=application_id,
+            applicant_email=application_data.applicant_data.email,
+            applicant_name=application_data.applicant_data.name,
+            ip_address=request.client.host if request.client else None
         )
-        await audit_repo.create(audit_log)
         
         # Add to processing queue
         await queue_service.enqueue_application({

@@ -209,22 +209,22 @@
     - Implement secure file permissions for stored photographs
     - _Requirements: 4.1, 4.2_
 
-- [ ] 9. Build audit logging system
-  - [ ] 9.1 Create audit log writer
+- [x] 9. Build audit logging system
+  - [x] 9.1 Create audit log writer
     - Implement structured audit log creation function
     - Add automatic timestamp using datetime.utcnow()
     - Store logs in MongoDB audit_logs collection
     - Create audit log Pydantic model for validation
     - _Requirements: 4.4_
 
-  - [ ] 9.2 Instrument audit events
+  - [x] 9.2 Instrument audit events
     - Add audit logging to application submission endpoint
     - Log duplicate detection events after similarity search
     - Log identity ID issuance in identity management service
     - Log all override decisions in admin endpoints
     - _Requirements: 4.4, 5.5_
 
-  - [ ] 9.3 Implement audit log querying
+  - [x] 9.3 Implement audit log querying
     - Create GET /api/v1/admin/audit-logs endpoint
     - Add MongoDB filtering by event_type, actor_id, and timestamp range
     - Implement pagination for audit log results
