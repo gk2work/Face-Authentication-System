@@ -156,28 +156,28 @@
     - Test duplicate linking logic
     - _Requirements: 2.1, 2.2, 2.5_
 
-- [ ] 7. Build Review & Override Service
-  - [ ] 7.1 Create admin API endpoints
+- [x] 7. Build Review & Override Service
+  - [x] 7.1 Create admin API endpoints
     - Implement GET /api/v1/admin/duplicates endpoint with MongoDB filtering
     - Implement GET /api/v1/admin/duplicates/{caseId} for case details
     - Implement POST /api/v1/admin/duplicates/{caseId}/override for decisions
     - Add pagination using skip() and limit() in MongoDB queries
     - _Requirements: 5.1, 5.4_
 
-  - [ ] 7.2 Build duplicate case presentation
+  - [x] 7.2 Build duplicate case presentation
     - Create comparison view data structure with both application documents
     - Include confidence scores from processing_metadata
     - Generate local file paths for photograph display
     - Add visual similarity indicators based on confidence scores
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [ ] 7.3 Implement override functionality
+  - [x] 7.3 Implement override functionality
     - Add manual override logic with basic admin authentication (JWT)
     - Require justification text field for override decisions
     - Update application and identity documents in MongoDB based on decision
     - _Requirements: 5.4_
 
-  - [ ] 7.4 Create audit trail for overrides
+  - [x] 7.4 Create audit trail for overrides
     - Log all override decisions to MongoDB audit_logs collection
     - Include admin ID, timestamp, decision, and justification fields
     - Implement insert-only audit log entries (no updates/deletes)

@@ -15,6 +15,7 @@ class EventType(str, Enum):
     IDENTITY_ISSUED = "identity_issued"
     APPLICATION_REJECTED = "application_rejected"
     MANUAL_OVERRIDE = "manual_override"
+    DUPLICATE_OVERRIDE = "duplicate_override"
     IDENTITY_MERGED = "identity_merged"
     ADMIN_LOGIN = "admin_login"
     ADMIN_LOGOUT = "admin_logout"
