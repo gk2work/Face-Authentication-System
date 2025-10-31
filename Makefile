@@ -55,7 +55,7 @@ health: ## Check health of services
 
 init: ## Initialize the system (first time setup)
 	@echo "Creating storage directories..."
-	@mkdir -p storage/photographs storage/vector_db logs
+	@mkdir -p backend/storage/photographs backend/storage/vector_db backend/logs
 	@echo "Building Docker images..."
 	@docker-compose build
 	@echo "Starting services..."
