@@ -23,36 +23,77 @@ AI-powered face authentication system for large-scale public examinations in Ind
 - **Logging**: Loguru with structured JSON logs
 - **Deployment**: Docker & Docker Compose
 
+## 🗂️ Monorepo Architecture
+
+This project uses a monorepo structure to organize code and enable scalable development:
+
+### Why Monorepo?
+
+- **Clear Separation**: Backend and frontend code are isolated in separate directories
+- **Unified Deployment**: Single docker-compose.yml orchestrates all services
+- **Shared Configuration**: Common settings and documentation at root level
+- **Independent Development**: Teams can work on services independently
+- **Simplified CI/CD**: Single repository for all deployment pipelines
+- **Code Reuse**: Easy to share types, utilities, and documentation
+
+### Directory Organization
+
+- **`backend/`**: Complete backend API service with its own dependencies, tests, and documentation
+- **`docker-compose.yml`**: Root-level orchestration for all services (backend, database, cache)
+- **`Makefile`**: Convenient commands to manage the entire system from project root
+- **`README.md`**: Project overview and getting started guide (this file)
+
+### Development Workflows
+
+**Backend-Only Development**: Navigate to `backend/` directory and follow instructions in `backend/README.md`
+
+**Full-Stack Development**: Use docker-compose from root to run all services together
+
+**Production Deployment**: Deploy entire stack using root-level docker-compose.yml
+
 ## 🏗️ Project Structure
+
+This project uses a **monorepo structure** to organize backend and frontend code in separate directories, enabling independent development while maintaining a unified deployment strategy.
 
 ```
 .
-├── app/
-│   ├── api/v1/           # API endpoints (applications, auth, admin, monitoring)
-│   ├── core/             # Configuration, logging, security
-│   ├── database/         # MongoDB connections and repositories
-│   ├── models/           # Pydantic models (Application, Identity, Audit)
-│   ├── services/         # Business logic services
-│   │   ├── application_processor.py    # End-to-end workflow orchestrator
-│   │   ├── face_recognition_service.py # Face detection and embedding
-│   │   ├── deduplication_service.py    # Duplicate detection
-│   │   ├── identity_service.py         # Identity management
-│   │   ├── notification_service.py     # Webhook notifications
-│   │   └── review_workflow_service.py  # Admin review workflow
-│   └── utils/            # Utility functions and error handling
-├── storage/
-│   ├── photographs/      # Applicant photographs
-│   └── vector_db/        # FAISS vector index
-├── tests/                # Test suite
-├── logs/                 # Application logs
-├── docs/                 # Documentation
-├── config/               # Configuration files (nginx, haproxy, env)
-├── scripts/              # Utility scripts
-├── docker-compose.yml    # Docker services configuration
-├── Dockerfile            # Application container
-├── Makefile              # Convenient commands
-└── requirements.txt      # Python dependencies
+├── backend/              # Backend API service
+│   ├── app/             # FastAPI application
+│   │   ├── api/v1/      # API endpoints (applications, auth, admin, monitoring)
+│   │   ├── core/        # Configuration, logging, security
+│   │   ├── database/    # MongoDB connections and repositories
+│   │   ├── models/      # Pydantic models (Application, Identity, Audit)
+│   │   ├── services/    # Business logic services
+│   │   │   ├── application_processor.py    # End-to-end workflow orchestrator
+│   │   │   ├── face_recognition_service.py # Face detection and embedding
+│   │   │   ├── deduplication_service.py    # Duplicate detection
+│   │   │   ├── identity_service.py         # Identity management
+│   │   │   ├── notification_service.py     # Webhook notifications
+│   │   │   └── review_workflow_service.py  # Admin review workflow
+│   │   └── utils/       # Utility functions and error handling
+│   ├── tests/           # Backend test suite
+│   ├── storage/         # Data storage
+│   │   ├── photographs/ # Applicant photographs
+│   │   └── vector_db/   # FAISS vector index
+│   ├── logs/            # Application logs
+│   ├── docs/            # Backend documentation
+│   ├── config/          # Configuration files (nginx, haproxy, env)
+│   ├── scripts/         # Utility scripts
+│   ├── Dockerfile       # Backend container definition
+│   ├── requirements.txt # Python dependencies
+│   └── README.md        # Backend-specific documentation
+├── docker-compose.yml   # Docker orchestration for all services
+├── Makefile             # Convenient commands (run from root)
+└── README.md            # This file - project overview
 ```
+
+### Monorepo Structure Benefits
+
+- **Separation of Concerns**: Backend and frontend code are clearly separated
+- **Independent Development**: Teams can work on backend/frontend independently
+- **Unified Deployment**: Single docker-compose.yml orchestrates all services
+- **Shared Resources**: Common configuration and documentation at root level
+- **Future-Ready**: Easy to add frontend, mobile apps, or other services
 
 ## 🐳 Quick Start with Docker (Recommended)
 
@@ -70,8 +111,11 @@ git clone <repository-url>
 cd face-authentication-deduplication
 
 # Initialize system (creates directories, builds images, starts services)
+# Run from project root
 make init
 ```
+
+**Note**: All `make` commands should be run from the **project root** directory. The backend service is automatically configured through docker-compose.
 
 ### 2. Access the System
 
@@ -123,41 +167,51 @@ make clean
 
 ## 💻 Local Development Setup (Without Docker)
 
+### Backend-Only Development
+
+For detailed backend setup instructions, see [`backend/README.md`](backend/README.md).
+
 ### Prerequisites
 
 - Python 3.10+
 - MongoDB 6.0+ (local or Atlas)
 - 4GB RAM minimum
 
-### Installation
+### Quick Setup
 
-1. **Create virtual environment**:
+1. **Navigate to backend directory**:
+
+```bash
+cd backend
+```
+
+2. **Create virtual environment**:
 
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-2. **Install dependencies**:
+3. **Install dependencies**:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **Set up environment variables**:
+4. **Set up environment variables**:
 
 ```bash
-cp config/production.env.example .env
+cp .env.example .env
 # Edit .env with your configuration
 ```
 
-4. **Create storage directories**:
+5. **Create storage directories**:
 
 ```bash
 mkdir -p storage/photographs storage/vector_db logs
 ```
 
-5. **Start MongoDB** (if running locally):
+6. **Start MongoDB** (if running locally):
 
 ```bash
 # Using Docker
@@ -170,6 +224,9 @@ docker run -d -p 27017:27017 --name mongodb mongo:6
 ### Running the Application
 
 ```bash
+# From backend directory
+cd backend
+
 # Development mode with hot reload
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
@@ -183,14 +240,31 @@ gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker -
 ### Running Tests
 
 ```bash
+# From backend directory
+cd backend
+
 # Run all tests
 pytest tests/ -v
 
 # Run specific test file
-pytest tests/test_cache_service.py -v
+pytest tests/test_face_recognition_service.py -v
 
 # Run with coverage
 pytest tests/ --cov=app --cov-report=html
+```
+
+### Full-Stack Development
+
+When frontend is added, you can run both services:
+
+```bash
+# Terminal 1 - Backend (from backend/)
+cd backend
+uvicorn app.main:app --reload
+
+# Terminal 2 - Frontend (from frontend/)
+cd frontend
+npm run dev
 ```
 
 ## 📚 API Documentation
@@ -273,7 +347,7 @@ curl -X POST http://localhost:8000/api/v1/admin/duplicates/{case_id}/override \
 
 ### Environment Variables
 
-Key configuration options (see `config/production.env.example` for complete list):
+Key configuration options (see `backend/.env.example` for complete list):
 
 ```bash
 # Application
@@ -345,24 +419,30 @@ Access metrics at:
 
 ### Docker Deployment
 
+All deployment commands should be run from the **project root**:
+
 ```bash
-# Build and start
+# Build and start all services
 docker-compose up -d
 
-# Scale workers
+# Scale backend workers
 docker-compose up -d --scale app=3
 
-# View logs
+# View backend logs
 docker-compose logs -f app
+
+# View all logs
+make logs
 ```
 
 ### Production Deployment
 
-See detailed guides in `docs/deployment/`:
+See detailed guides in `backend/docs/deployment/`:
 
 - `horizontal-scaling.md` - Multi-server deployment
 - `load-balancing-guide.md` - Nginx/HAProxy configuration
-- `performance-optimizations.md` - Performance tuning
+
+For backend-specific deployment details, see `backend/README.md`.
 
 ### Cloud Deployment
 
@@ -411,17 +491,23 @@ pytest tests/test_batch_processing.py -v
 
 ## 🛠️ Development
 
-### Adding New Features
+### Adding New Backend Features
 
-1. Define models in `app/models/`
-2. Implement business logic in `app/services/`
-3. Create API endpoints in `app/api/v1/`
-4. Add tests in `tests/`
-5. Update documentation
+1. Navigate to `backend/` directory
+2. Define models in `app/models/`
+3. Implement business logic in `app/services/`
+4. Create API endpoints in `app/api/v1/`
+5. Add tests in `tests/`
+6. Update documentation
+
+For detailed development instructions, see [`backend/README.md`](backend/README.md).
 
 ### Code Style
 
 ```bash
+# From backend directory
+cd backend
+
 # Format code
 black app/ tests/
 
@@ -434,10 +520,18 @@ mypy app/
 
 ## 📖 Documentation
 
-- **API Documentation**: http://localhost:8000/docs
-- **Performance Guide**: `docs/performance-optimizations.md`
-- **Deployment Guide**: `docs/deployment/`
-- **Load Balancing**: `docs/deployment/load-balancing-guide.md`
+### API Documentation
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### Project Documentation
+
+- **Backend Setup**: [`backend/README.md`](backend/README.md) - Backend-specific documentation
+- **Security Guide**: [`backend/docs/SECURITY.md`](backend/docs/SECURITY.md)
+- **HTTPS Setup**: [`backend/docs/HTTPS_CONFIGURATION.md`](backend/docs/HTTPS_CONFIGURATION.md)
+- **Deployment Guides**: [`backend/docs/deployment/`](backend/docs/deployment/)
+- **Load Balancing**: [`backend/docs/deployment/load-balancing-guide.md`](backend/docs/deployment/load-balancing-guide.md)
 
 ## 🐛 Troubleshooting
 
@@ -446,11 +540,11 @@ mypy app/
 **MongoDB Connection Failed**
 
 ```bash
-# Check MongoDB is running
+# Check MongoDB is running (from project root)
 docker-compose ps mongodb
 
-# Check connection string in .env
-echo $MONGODB_URI
+# Check connection string in backend/.env
+cat backend/.env | grep MONGODB_URI
 
 # Restart MongoDB
 docker-compose restart mongodb
@@ -471,10 +565,14 @@ kill -9 <PID>
 **Storage Permission Issues**
 
 ```bash
-# Fix permissions
-chmod -R 755 storage/
-chown -R $USER:$USER storage/
+# Fix permissions (from project root)
+chmod -R 755 backend/storage/
+chown -R $USER:$USER backend/storage/
 ```
+
+**Backend-Specific Issues**
+
+For backend-specific troubleshooting, see the troubleshooting section in [`backend/README.md`](backend/README.md).
 
 ## 📝 License
 
