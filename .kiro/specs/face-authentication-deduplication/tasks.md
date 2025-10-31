@@ -84,42 +84,42 @@
     - Test error handling for edge cases
     - _Requirements: 1.1, 6.1_
 
-- [ ] 5. Implement De-duplication Service
-  - [ ] 5.1 Set up FAISS vector index
+- [x] 5. Implement De-duplication Service
+  - [x] 5.1 Set up FAISS vector index
     - Install faiss-cpu library (free, local)
     - Create FAISS IndexFlatL2 or IndexIVFFlat for 512-dimensional vectors
     - Implement index persistence to disk (./storage/vectors/faiss.index)
     - Create mapping file for index_id to application_id (JSON or pickle)
     - _Requirements: 1.2, 3.3_
 
-  - [ ] 5.2 Implement similarity search using FAISS
+  - [x] 5.2 Implement similarity search using FAISS
     - Write FAISS search query with L2 distance (converts to cosine similarity)
     - Implement top-k retrieval (k=10) for candidate matches
     - Add configurable verification threshold (default 0.85 for cosine similarity)
     - Filter and rank results by confidence score
     - _Requirements: 1.2, 1.3_
 
-  - [ ] 5.3 Build duplicate detection logic
+  - [x] 5.3 Build duplicate detection logic
     - Implement threshold-based duplicate classification
     - Create confidence score banding (>0.95: high, 0.85-0.95: medium, <0.85: unique)
     - Handle edge cases for borderline matches (flag for manual review)
     - Generate duplicate match results with metadata
     - _Requirements: 1.3, 1.5_
 
-  - [ ] 5.4 Implement embedding storage
+  - [x] 5.4 Implement embedding storage
     - Add embeddings to FAISS index with unique index IDs
     - Store embedding metadata in MongoDB identity_embeddings collection
     - Implement batch insertion for performance optimization
     - Save FAISS index to disk after updates
     - _Requirements: 2.4_
 
-  - [ ] 5.5 Add performance monitoring
+  - [x] 5.5 Add performance monitoring
     - Instrument search latency metrics
     - Track vector database query performance
     - Implement alerting for slow queries (> 5 seconds)
     - _Requirements: 1.4, 3.3, 6.3_
 
-  - [ ] 5.6 Write integration tests for de-duplication
+  - [x] 5.6 Write integration tests for de-duplication
     - Test duplicate detection with known duplicate pairs
     - Test unique applicant identification
     - Verify threshold behavior with various confidence scores
