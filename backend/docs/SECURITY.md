@@ -300,9 +300,10 @@ For production, HTTPS is mandatory. Use one of these methods:
 
 ## Creating the First Admin User
 
-Use the provided script to create the initial admin user:
+Use the provided script to create the initial admin user from the backend directory:
 
 ```bash
+cd backend
 python scripts/create_admin_user.py
 ```
 

@@ -4,15 +4,16 @@ This guide will help you quickly set up and use the authentication system.
 
 ## Prerequisites
 
-1. MongoDB connection configured in `.env`
-2. Dependencies installed: `pip install -r requirements.txt`
-3. Application running: `python run.py`
+1. MongoDB connection configured in `backend/.env`
+2. Dependencies installed: `pip install -r backend/requirements.txt`
+3. Application running from backend directory: `cd backend && python run.py`
 
 ## Step 1: Create Admin User
 
-Run the admin user creation script:
+Run the admin user creation script from the backend directory:
 
 ```bash
+cd backend
 python scripts/create_admin_user.py
 ```
 

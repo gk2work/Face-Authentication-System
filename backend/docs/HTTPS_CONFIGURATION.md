@@ -51,7 +51,7 @@ For direct HTTPS support in Uvicorn:
      --workers 4
    ```
 
-4. **Update run.py for Production**
+4. **Update backend/run.py for Production**
 
    ```python
    import uvicorn
@@ -217,7 +217,7 @@ For containerized deployments with automatic SSL:
 
 ## Environment Variables for Production
 
-Update `.env` file for production:
+Update `backend/.env` file for production:
 
 ```bash
 # Environment
@@ -325,8 +325,8 @@ sudo systemctl restart nginx
 # Check if application is running
 curl http://localhost:8000/health
 
-# View application logs
-tail -f logs/app.log
+# View application logs (from project root)
+tail -f backend/logs/app.log
 ```
 
 ## Additional Resources
