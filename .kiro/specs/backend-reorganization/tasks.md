@@ -131,14 +131,14 @@
   - Test `make health` command
   - _Requirements: 4.1, 4.2_
 
-- [-] 11. Clean up and finalize
+- [x] 11. Clean up and finalize
   - Remove old `venv/` directory from root (will be recreated in backend/)
   - Verify no orphaned files remain at root level
   - Commit all changes with descriptive message
   - Create git tag for this reorganization milestone
   - _Requirements: 1.1, 1.3_
 
-- [ ] 12. Update CI/CD configurations (if applicable)
+- [x] 12. Update CI/CD configurations (if applicable)
   - Update build scripts to reference backend/ directory
   - Update test commands to run from backend/ context
   - Update deployment scripts with new paths
