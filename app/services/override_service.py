@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 
 from app.core.logging import logger
-from app.database.repositories import application_repository, identity_repository
+from app.database.repositories import ApplicationRepository, IdentityRepository
 from app.models.application import ApplicationStatus
 from app.models.identity import IdentityStatus
 

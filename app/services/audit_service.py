@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from app.core.logging import logger
-from app.database.repositories import audit_log_repository
+from app.database.repositories import AuditLogRepository
 from app.models.audit import AuditLog, EventType, ActorType, ResourceType
 
 

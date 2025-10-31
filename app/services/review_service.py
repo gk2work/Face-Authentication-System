@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 from app.core.logging import logger
-from app.database.repositories import application_repository
+from app.database.repositories import ApplicationRepository
 from app.models.application import Application
 
 

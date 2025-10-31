@@ -8,7 +8,7 @@ from app.core.logging import logger
 from app.services.queue_service import queue_service
 from app.services.face_recognition_service import face_recognition_service, FaceRecognitionError
 from app.services.embedding_cache_service import embedding_cache_service
-from app.database.repositories import application_repository
+from app.database.repositories import ApplicationRepository
 from app.models.application import ApplicationStatus
 
 

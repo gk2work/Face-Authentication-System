@@ -6,7 +6,7 @@ from datetime import datetime
 
 from app.core.logging import logger
 from app.services.vector_index_service import vector_index_service
-from app.database.repositories import embedding_repository
+from app.database.repositories import EmbeddingRepository
 from app.models.identity import IdentityEmbedding, EmbeddingMetadata, FaceBoundingBox
 
 
