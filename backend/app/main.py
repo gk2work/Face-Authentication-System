@@ -2,8 +2,10 @@
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import os
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -113,24 +115,43 @@ app.include_router(monitoring.router, prefix="/api/v1")
 app.include_router(system.router, prefix="/api/v1")
 
 # CORS Configuration
-# In production, replace with specific allowed origins
-allowed_origins = [
-    "http://localhost:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:8000",
-]
-
-# Allow all origins in development, specific origins in production
+# Configure allowed origins based on environment
 if settings.ENVIRONMENT == "development":
-    allowed_origins = ["*"]
+    # In development, allow frontend dev server and localhost variations
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",  # Vite dev server default port
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",  # Vite dev server
+        "http://127.0.0.1:8000",
+    ]
+    allow_credentials = True
+    logger.info(f"CORS configured for development with origins: {allowed_origins}")
+else:
+    # In production, only allow same-origin requests
+    # Frontend will be served from the same origin as the API
+    allowed_origins = [
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+    allow_credentials = True
+    logger.info(f"CORS configured for production with origins: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_credentials=allow_credentials,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "X-Request-ID",
+    ],
+    expose_headers=["X-Request-ID", "X-Process-Time"],
     max_age=600,  # Cache preflight requests for 10 minutes
 )
 
@@ -189,14 +210,59 @@ async def shutdown_event():
     await mongodb_manager.disconnect()
 
 
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "service": "Face Authentication and De-duplication System",
-        "version": "0.1.0",
-        "status": "running"
-    }
+# Static file serving for production frontend
+# Check if frontend build directory exists
+frontend_dist_path = Path(__file__).parent.parent.parent / "frontend" / "dist"
+
+if frontend_dist_path.exists() and frontend_dist_path.is_dir():
+    # Mount static assets directory
+    app.mount(
+        "/assets",
+        StaticFiles(directory=str(frontend_dist_path / "assets")),
+        name="static"
+    )
+    logger.info(f"Serving frontend static assets from {frontend_dist_path / 'assets'}")
+    
+    # Serve index.html for root and all non-API routes (SPA catch-all)
+    @app.get("/", response_class=HTMLResponse)
+    async def serve_frontend_root():
+        """Serve frontend index.html for root path"""
+        index_path = frontend_dist_path / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        return HTMLResponse(content="<h1>Frontend not built</h1>", status_code=404)
+    
+    # Catch-all route for React Router (must be last)
+    @app.get("/{full_path:path}", response_class=HTMLResponse)
+    async def serve_frontend_spa(full_path: str):
+        """
+        Catch-all route to serve index.html for all non-API routes.
+        This enables React Router to handle client-side routing.
+        """
+        # Don't intercept API routes, docs, or other backend routes
+        if full_path.startswith(("api/", "docs", "redoc", "openapi.json", "health", "live", "ready", "dashboard")):
+            return HTMLResponse(content="<h1>Not Found</h1>", status_code=404)
+        
+        # Serve index.html for all other routes
+        index_path = frontend_dist_path / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        return HTMLResponse(content="<h1>Frontend not built</h1>", status_code=404)
+    
+    logger.info("Frontend serving configured - production mode")
+else:
+    # Development mode - frontend not built
+    @app.get("/")
+    async def root():
+        """Root endpoint - development mode"""
+        return {
+            "service": "Face Authentication and De-duplication System",
+            "version": "0.1.0",
+            "status": "running",
+            "mode": "development",
+            "message": "Frontend should be run separately with 'npm run dev' in development mode"
+        }
+    logger.info("Frontend build not found - development mode (run frontend separately)")
 
 
 @app.get("/health", tags=["System"])

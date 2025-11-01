@@ -90,7 +90,7 @@ function AuditLogRow({ log }: AuditLogRowProps) {
                 Details
               </Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography variant="body2" color="text.secondary">
                     Actor Type: {log.actor_type}
                   </Typography>
@@ -110,7 +110,7 @@ function AuditLogRow({ log }: AuditLogRowProps) {
                     </Typography>
                   )}
                 </Grid>
-                <Grid item xs={12} sm={6}>
+                <Grid size={{ xs: 12, sm: 6 }}>
                   {log.error_message && (
                     <Alert severity="error" sx={{ mb: 1 }}>
                       {log.error_message}
@@ -252,7 +252,7 @@ export const AuditLogViewer = () => {
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={3}>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <FormControl fullWidth size="small">
               <InputLabel>Event Type</InputLabel>
               <Select
@@ -270,7 +270,7 @@ export const AuditLogViewer = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <TextField
               fullWidth
               size="small"
@@ -279,7 +279,7 @@ export const AuditLogViewer = () => {
               onChange={(e) => setActorId(e.target.value)}
             />
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <TextField
               fullWidth
               size="small"
@@ -288,7 +288,7 @@ export const AuditLogViewer = () => {
               onChange={(e) => setResourceId(e.target.value)}
             />
           </Grid>
-          <Grid item xs={12} sm={3}>
+          <Grid size={{ xs: 12, sm: 3 }}>
             <Button
               fullWidth
               variant="contained"

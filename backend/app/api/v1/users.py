@@ -3,6 +3,7 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from typing import List, Optional
 from datetime import datetime
+from pydantic import BaseModel
 
 from app.models.user import User, UserCreate, UserResponse, UserRole
 from app.database.mongodb import get_database

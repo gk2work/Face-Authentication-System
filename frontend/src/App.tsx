@@ -15,14 +15,18 @@ import {
   AdminPanelPage,
 } from './pages';
 import { ProtectedRoute } from './components';
+import ErrorBoundary from './components/ErrorBoundary';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { authService } from './services';
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <BrowserRouter>
-        <Routes>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <OfflineIndicator />
+        <BrowserRouter>
+          <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -102,6 +106,7 @@ function App() {
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

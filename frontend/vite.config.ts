@@ -23,6 +23,31 @@ export default defineConfig({
         target: "http://localhost:8000",
         changeOrigin: true,
       },
+      "/ws": {
+        target: "ws://localhost:8000",
+        ws: true,
+      },
     },
+  },
+  build: {
+    outDir: "dist",
+    assetsDir: "assets",
+    sourcemap: false,
+    minify: "esbuild",
+    target: "es2015",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          mui: ["@mui/material", "@mui/icons-material"],
+          charts: ["recharts"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
+  },
+  preview: {
+    port: 5173,
+    strictPort: true,
   },
 });

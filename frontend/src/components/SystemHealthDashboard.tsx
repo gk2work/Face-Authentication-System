@@ -31,13 +31,6 @@ interface SystemMetrics {
   latency_stats: Record<string, any>;
 }
 
-interface CircuitBreakerStatus {
-  name: string;
-  state: 'closed' | 'open' | 'half_open';
-  failure_count: number;
-  last_failure_time?: string;
-}
-
 export const SystemHealthDashboard = () => {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,7 +154,7 @@ export const SystemHealthDashboard = () => {
 
       <Grid container spacing={3}>
         {/* Overall Status */}
-        <Grid item xs={12} md={4}>
+        <Grid size={{ xs: 12, md: 4 }}>
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center" gap={1} mb={1}>
@@ -184,14 +177,14 @@ export const SystemHealthDashboard = () => {
         </Grid>
 
         {/* Event Counters */}
-        <Grid item xs={12} md={8}>
+        <Grid size={{ xs: 12, md: 8 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Event Counters
             </Typography>
             <Grid container spacing={2}>
               {Object.entries(metrics.counters).map(([key, value]) => (
-                <Grid item xs={6} sm={4} key={key}>
+                <Grid size={{ xs: 6, sm: 4 }} key={key}>
                   <Box>
                     <Typography variant="h4">{value.toLocaleString()}</Typography>
                     <Typography variant="caption" color="text.secondary">
@@ -205,7 +198,7 @@ export const SystemHealthDashboard = () => {
         </Grid>
 
         {/* Processing Rates */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Processing Rates
@@ -224,7 +217,7 @@ export const SystemHealthDashboard = () => {
         </Grid>
 
         {/* Latency Statistics */}
-        <Grid item xs={12} md={6}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Latency Statistics
@@ -253,7 +246,7 @@ export const SystemHealthDashboard = () => {
         </Grid>
 
         {/* Circuit Breakers (Placeholder) */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Circuit Breakers
@@ -265,7 +258,7 @@ export const SystemHealthDashboard = () => {
         </Grid>
 
         {/* Dead Letter Queue (Placeholder) */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
               Dead Letter Queue

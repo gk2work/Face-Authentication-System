@@ -4,6 +4,8 @@ AI-powered face authentication system for large-scale public examinations in Ind
 
 ## 🚀 Features
 
+### Core Features
+
 - **Automated De-duplication**: Detect duplicate applications using facial recognition with 85%+ accuracy
 - **Unique Identity Management**: Assign single unique IDs to verified applicants
 - **High Performance**: Process 10,000+ applications per hour with batch processing
@@ -13,15 +15,43 @@ AI-powered face authentication system for large-scale public examinations in Ind
 - **Webhook Notifications**: Real-time status updates via webhooks
 - **Admin Review Interface**: Manual review for borderline duplicate cases
 
+### Frontend Features
+
+- **Interactive Dashboard**: Real-time statistics and application timeline charts
+- **Application Upload**: Drag-and-drop interface with real-time processing updates via WebSocket
+- **Application Management**: Search, filter, and view detailed application information
+- **Identity Management**: Browse identities, view photo galleries, and application history
+- **Match Visualization**: Side-by-side comparison of duplicate matches with similarity scores
+- **Admin Panel**: User management, system health monitoring, and audit log viewer
+- **Error Handling**: Global error boundary, retry logic, and offline detection
+- **Responsive Design**: Mobile-friendly interface with Material-UI components
+- **Real-time Updates**: WebSocket integration for live processing status
+
 ## 📋 Technology Stack
 
-- **Backend**: FastAPI (Python 3.10+)
+### Backend
+
+- **Framework**: FastAPI (Python 3.10+)
 - **Database**: MongoDB 6.0
 - **Vector Search**: FAISS with IVF optimization
 - **Cache**: In-memory cache with TTL
 - **Face Recognition**: FaceNet (InceptionResnetV1)
 - **Logging**: Loguru with structured JSON logs
-- **Deployment**: Docker & Docker Compose
+
+### Frontend
+
+- **Framework**: React 19 with TypeScript
+- **Build Tool**: Vite 7
+- **UI Library**: Material-UI (MUI) v7
+- **Routing**: React Router v7
+- **HTTP Client**: Axios
+- **Charts**: Recharts
+- **State Management**: React Hooks
+
+### Deployment
+
+- **Containerization**: Docker & Docker Compose
+- **Web Server**: FastAPI serves both API and frontend in production
 
 ## 🗂️ Monorepo Architecture
 
@@ -82,6 +112,21 @@ This project uses a **monorepo structure** to organize backend and frontend code
 │   ├── Dockerfile       # Backend container definition
 │   ├── requirements.txt # Python dependencies
 │   └── README.md        # Backend-specific documentation
+├── frontend/            # Frontend React application
+│   ├── src/            # Source code
+│   │   ├── components/ # Reusable React components
+│   │   ├── pages/      # Page components
+│   │   ├── services/   # API client and services
+│   │   ├── hooks/      # Custom React hooks
+│   │   ├── types/      # TypeScript type definitions
+│   │   ├── utils/      # Utility functions
+│   │   ├── test/       # Test utilities and setup
+│   │   └── App.tsx     # Main application component
+│   ├── dist/           # Production build output
+│   ├── package.json    # Node dependencies
+│   ├── vite.config.ts  # Vite configuration
+│   ├── vitest.config.ts # Test configuration
+│   └── tsconfig.json   # TypeScript configuration
 ├── docker-compose.yml   # Docker orchestration for all services
 ├── Makefile             # Convenient commands (run from root)
 └── README.md            # This file - project overview
@@ -253,19 +298,98 @@ pytest tests/test_face_recognition_service.py -v
 pytest tests/ --cov=app --cov-report=html
 ```
 
+### Frontend Setup
+
+#### Prerequisites
+
+- Node.js 18+ and npm 9+
+- Backend API running (see above)
+
+#### Installation
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env.development
+# Edit .env.development if needed (default points to localhost:8000)
+```
+
+#### Development Mode
+
+```bash
+# From frontend directory
+npm run dev
+
+# Access at http://localhost:5173
+```
+
+The frontend dev server proxies API requests to the backend at `http://localhost:8000`.
+
+#### Building for Production
+
+```bash
+# From frontend directory
+npm run build
+
+# Output will be in frontend/dist/
+# Backend automatically serves this in production mode
+```
+
+#### Running Tests
+
+```bash
+# From frontend directory
+
+# Run tests in watch mode
+npm test
+
+# Run tests once
+npm run test:run
+
+# Run with coverage
+npm run test:coverage
+```
+
 ### Full-Stack Development
 
-When frontend is added, you can run both services:
+Run both backend and frontend services:
 
 ```bash
 # Terminal 1 - Backend (from backend/)
 cd backend
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # Terminal 2 - Frontend (from frontend/)
 cd frontend
 npm run dev
 ```
+
+Access:
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+
+### Production Mode
+
+In production, the backend serves the built frontend:
+
+```bash
+# Build frontend
+cd frontend
+npm run build
+
+# Start backend (serves frontend automatically)
+cd ../backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Access everything at: http://localhost:8000
 
 ## 📚 API Documentation
 
@@ -527,11 +651,19 @@ mypy app/
 
 ### Project Documentation
 
+#### Backend
+
 - **Backend Setup**: [`backend/README.md`](backend/README.md) - Backend-specific documentation
 - **Security Guide**: [`backend/docs/SECURITY.md`](backend/docs/SECURITY.md)
 - **HTTPS Setup**: [`backend/docs/HTTPS_CONFIGURATION.md`](backend/docs/HTTPS_CONFIGURATION.md)
 - **Deployment Guides**: [`backend/docs/deployment/`](backend/docs/deployment/)
 - **Load Balancing**: [`backend/docs/deployment/load-balancing-guide.md`](backend/docs/deployment/load-balancing-guide.md)
+
+#### Frontend & Integration
+
+- **Integration Guide**: [`INTEGRATION_GUIDE.md`](INTEGRATION_GUIDE.md) - Frontend-backend integration
+- **Error Handling**: [`ERROR_HANDLING_GUIDE.md`](ERROR_HANDLING_GUIDE.md) - Error handling and loading states
+- **Testing Guide**: [`TESTING_GUIDE.md`](TESTING_GUIDE.md) - Testing setup and best practices
 
 ## 🐛 Troubleshooting
 
