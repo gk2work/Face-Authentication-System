@@ -121,6 +121,17 @@ class MongoDBManager:
             # Create indexes for users collection (for authentication)
             await self.db.users.create_index("username", unique=True)
             await self.db.users.create_index("email", unique=True)
+            await self.db.users.create_index("roles")
+            await self.db.users.create_index("is_active")
+            await self.db.users.create_index("created_at")
+            
+            # Compound indexes for superadmin queries (performance optimization)
+            await self.db.users.create_index([("roles", 1), ("is_active", 1)])
+            await self.db.users.create_index([("is_active", 1), ("created_at", -1)])
+            await self.db.users.create_index([("roles", 1), ("created_at", -1)])
+            
+            # Index for application processed_by field (for superadmin stats)
+            await self.db.applications.create_index("processing.processed_by")
             
             logger.info("MongoDB indexes created successfully (including compound indexes for performance)")
             
@@ -152,6 +163,6 @@ mongodb_manager = MongoDBManager()
 
 async def get_database():
     """Dependency to get database instance"""
-    if not mongodb_manager.db:
+    if mongodb_manager.db is None:
         await mongodb_manager.connect()
     return mongodb_manager.db

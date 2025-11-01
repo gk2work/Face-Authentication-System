@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.core.logging import logger
 from app.core.security import security_manager
 from app.database.mongodb import mongodb_manager
-from app.api.v1 import applications, auth, admin, monitoring, system, face_recognition, websocket, users
+from app.api.v1 import applications, auth, admin, monitoring, system, face_recognition, websocket, users, dashboard, identities, superadmin
 from app.services.health_check_service import health_check_service
 from datetime import datetime
 import time
@@ -42,8 +42,11 @@ app = FastAPI(
     * **Monitoring**: System health and metrics
     * **System**: Health checks and readiness probes
     
-    ### Rate Limiting:
-    Most endpoints are rate-limited to ensure fair usage and system stability.
+    ### Security:
+    * **JWT Authentication**: Bearer token authentication via Authorization header
+    * **CSRF Protection**: Not required - JWT tokens in headers are immune to CSRF attacks
+    * **Rate Limiting**: Most endpoints are rate-limited to prevent abuse
+    * **Role-Based Access Control**: Granular permissions for different user roles
     """,
     version="1.0.0",
     docs_url="/docs",
@@ -107,12 +110,16 @@ async def log_requests(request: Request, call_next):
 # Include API routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(applications.router, prefix="/api/v1")
+app.include_router(identities.router, prefix="/api/v1")
+app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(face_recognition.router, prefix="/api/v1")
 app.include_router(websocket.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
+app.include_router(superadmin.router, prefix="/api/v1")
 app.include_router(monitoring.router, prefix="/api/v1")
 app.include_router(system.router, prefix="/api/v1")
+app.include_router(system.health_router, prefix="/api/v1")  # Health endpoint without /system prefix
 
 # CORS Configuration
 # Configure allowed origins based on environment

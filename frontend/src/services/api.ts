@@ -257,6 +257,100 @@ export const api = {
   },
 };
 
+// Superadmin API methods
+export const superadminApi = {
+  /**
+   * Get paginated list of admin users with filters
+   */
+  getAdminUsers: async (
+    page: number = 1,
+    pageSize: number = 50,
+    filters?: {
+      search?: string;
+      role?: string;
+      is_active?: boolean;
+      created_after?: string;
+      created_before?: string;
+      sort_by?: string;
+      sort_order?: "asc" | "desc";
+    }
+  ) => {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString(),
+    });
+
+    if (filters?.search) params.append("search", filters.search);
+    if (filters?.role) params.append("role", filters.role);
+    if (filters?.is_active !== undefined)
+      params.append("is_active", filters.is_active.toString());
+    if (filters?.created_after)
+      params.append("created_after", filters.created_after);
+    if (filters?.created_before)
+      params.append("created_before", filters.created_before);
+    if (filters?.sort_by) params.append("sort_by", filters.sort_by);
+    if (filters?.sort_order) params.append("sort_order", filters.sort_order);
+
+    return api.get(`/superadmin/users?${params.toString()}`);
+  },
+
+  /**
+   * Get detailed information about a specific admin user
+   */
+  getAdminUser: async (username: string) => {
+    return api.get(`/superadmin/users/${username}`);
+  },
+
+  /**
+   * Get statistics for a specific admin user
+   */
+  getAdminUserStats: async (username: string) => {
+    return api.get(`/superadmin/users/${username}/stats`);
+  },
+
+  /**
+   * Create a new admin user
+   */
+  createAdminUser: async (userData: {
+    username: string;
+    email: string;
+    password: string;
+    full_name: string;
+    roles: string[];
+  }) => {
+    return api.post("/superadmin/users", userData);
+  },
+
+  /**
+   * Update an existing admin user
+   */
+  updateAdminUser: async (
+    username: string,
+    updateData: {
+      email?: string;
+      full_name?: string;
+      roles?: string[];
+      is_active?: boolean;
+    }
+  ) => {
+    return api.put(`/superadmin/users/${username}`, updateData);
+  },
+
+  /**
+   * Deactivate an admin user
+   */
+  deactivateAdminUser: async (username: string) => {
+    return api.delete(`/superadmin/users/${username}`);
+  },
+
+  /**
+   * Get aggregate statistics for all admin users
+   */
+  getAggregateStats: async () => {
+    return api.get("/superadmin/stats");
+  },
+};
+
 // Export the raw axios instance for special cases
 export { apiClient };
 

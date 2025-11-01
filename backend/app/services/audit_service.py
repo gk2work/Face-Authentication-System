@@ -468,7 +468,7 @@ class AuditService:
         """
         return await self.create_audit_log(
             db=db,
-            event_type=EventType.APPLICATION_SUBMISSION,
+            event_type=EventType.APPLICATION_SUBMITTED,
             actor_id="system",
             actor_type=ActorType.SYSTEM,
             action=f"Application processing completed with status: {status}",
@@ -503,7 +503,7 @@ class AuditService:
         """
         return await self.create_audit_log(
             db=db,
-            event_type=EventType.APPLICATION_SUBMISSION,
+            event_type=EventType.APPLICATION_SUBMITTED,
             actor_id="system",
             actor_type=ActorType.SYSTEM,
             action=f"Application rejected: {error_code}",
@@ -536,7 +536,7 @@ class AuditService:
         """
         return await self.create_audit_log(
             db=db,
-            event_type=EventType.APPLICATION_SUBMISSION,
+            event_type=EventType.APPLICATION_SUBMITTED,
             actor_id="system",
             actor_type=ActorType.SYSTEM,
             action="Application processing failed",

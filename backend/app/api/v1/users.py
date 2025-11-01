@@ -3,12 +3,12 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Query
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.user import User, UserCreate, UserResponse, UserRole
 from app.database.mongodb import get_database
 from app.database.repositories import UserRepository
-from app.api.dependencies import require_admin
+from app.api.dependencies import require_admin, get_current_active_user
 from app.services.auth_service import auth_service
 from app.core.logging import logger
 
@@ -304,4 +304,68 @@ async def deactivate_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to deactivate user"
+        )
+
+
+
+class ChangePasswordRequest(BaseModel):
+    """Request model for changing password"""
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+
+
+@router.put("/me/password")
+async def change_password(
+    password_data: ChangePasswordRequest,
+    current_user: User = Depends(get_current_active_user),
+    db=Depends(get_database)
+) -> dict:
+    """
+    Change current user's password
+    
+    - **current_password**: Current password for verification
+    - **new_password**: New password (minimum 8 characters)
+    
+    Returns success message
+    """
+    try:
+        user_repo = UserRepository(db)
+        user = await user_repo.get_by_username(current_user.username)
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        
+        # Verify current password
+        if not auth_service.verify_password(password_data.current_password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
+        
+        # Hash new password
+        new_hashed_password = auth_service.get_password_hash(password_data.new_password)
+        
+        # Update password
+        await user_repo.update(current_user.username, {
+            "hashed_password": new_hashed_password,
+            "updated_at": datetime.utcnow()
+        })
+        
+        logger.info(f"Password changed for user: {current_user.username}")
+        
+        return {
+            "success": True,
+            "message": "Password changed successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error changing password: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to change password"
         )

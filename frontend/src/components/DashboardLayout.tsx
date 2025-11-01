@@ -24,10 +24,13 @@ import {
   Description as ApplicationIcon,
   People as IdentityIcon,
   AdminPanelSettings as AdminIcon,
+  SupervisorAccount as SuperadminIcon,
   AccountCircle,
   Logout,
+  Lock,
 } from '@mui/icons-material';
 import { authService } from '@/services';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 
 const drawerWidth = 240;
 
@@ -39,7 +42,7 @@ interface NavItem {
   text: string;
   icon: React.ReactElement;
   path: string;
-  requiredRole?: 'admin' | 'operator' | 'viewer' | 'reviewer';
+  requiredRole?: 'admin' | 'operator' | 'viewer' | 'reviewer' | 'superadmin';
 }
 
 const navItems: NavItem[] = [
@@ -48,6 +51,7 @@ const navItems: NavItem[] = [
   { text: 'Applications', icon: <ApplicationIcon />, path: '/applications' },
   { text: 'Identities', icon: <IdentityIcon />, path: '/identities' },
   { text: 'Admin Panel', icon: <AdminIcon />, path: '/admin', requiredRole: 'admin' },
+  { text: 'Superadmin', icon: <SuperadminIcon />, path: '/superadmin', requiredRole: 'superadmin' },
 ];
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
@@ -55,6 +59,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
   const currentUser = authService.getCurrentUser();
 
@@ -68,6 +73,11 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleChangePassword = () => {
+    handleMenuClose();
+    setPasswordDialogOpen(true);
   };
 
   const handleLogout = () => {
@@ -89,10 +99,14 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     const hasRequiredRole = currentUser.roles?.includes(item.requiredRole as any) || 
                            currentUser.role === item.requiredRole;
 
-    // Admin has access to everything
+    // Superadmin has access to everything
+    const isSuperadmin = currentUser.roles?.includes('superadmin') || currentUser.role === 'superadmin';
+    
+    // Admin has access to everything except superadmin
     const isAdmin = currentUser.roles?.includes('admin') || currentUser.role === 'admin';
+    const isSuperadminRoute = item.requiredRole === 'superadmin';
 
-    return hasRequiredRole || isAdmin;
+    return hasRequiredRole || isSuperadmin || (isAdmin && !isSuperadminRoute);
   };
 
   const drawer = (
@@ -173,6 +187,12 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           </Typography>
         </MenuItem>
         <Divider />
+        <MenuItem onClick={handleChangePassword}>
+          <ListItemIcon>
+            <Lock fontSize="small" />
+          </ListItemIcon>
+          Change Password
+        </MenuItem>
         <MenuItem onClick={handleLogout}>
           <ListItemIcon>
             <Logout fontSize="small" />
@@ -180,6 +200,15 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           Logout
         </MenuItem>
       </Menu>
+
+      <ChangePasswordDialog
+        open={passwordDialogOpen}
+        onClose={() => setPasswordDialogOpen(false)}
+        onSuccess={() => {
+          // Optionally show a success message or logout user
+          console.log('Password changed successfully');
+        }}
+      />
 
       <Box
         component="nav"

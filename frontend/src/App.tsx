@@ -14,6 +14,7 @@ import {
   IdentityDetailPage,
   AdminPanelPage,
 } from './pages';
+import { SuperadminPage } from './pages/SuperadminPage';
 import { ProtectedRoute } from './components';
 import ErrorBoundary from './components/ErrorBoundary';
 import { OfflineIndicator } from './components/OfflineIndicator';
@@ -27,13 +28,18 @@ function App() {
         <OfflineIndicator />
         <BrowserRouter>
           <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<LoginPage />} />
+          {/* Public routes - No authentication required */}
+          <Route path="/" element={<UploadPage />} />
+          <Route path="/apply" element={<UploadPage />} />
+          <Route path="/check-status/:id" element={<ApplicationDetailPage />} />
+          
+          {/* Admin/Staff authentication routes */}
+          <Route path="/admin/login" element={<LoginPage />} />
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-          {/* Protected routes */}
+          {/* Protected Admin/Staff routes */}
           <Route
-            path="/dashboard"
+            path="/admin/dashboard"
             element={
               <ProtectedRoute>
                 <DashboardPage />
@@ -41,15 +47,7 @@ function App() {
             }
           />
           <Route
-            path="/upload"
-            element={
-              <ProtectedRoute requiredRole="operator">
-                <UploadPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/applications"
+            path="/admin/applications"
             element={
               <ProtectedRoute>
                 <ApplicationListPage />
@@ -57,7 +55,7 @@ function App() {
             }
           />
           <Route
-            path="/applications/:id"
+            path="/admin/applications/:id"
             element={
               <ProtectedRoute>
                 <ApplicationDetailPage />
@@ -65,7 +63,7 @@ function App() {
             }
           />
           <Route
-            path="/identities"
+            path="/admin/identities"
             element={
               <ProtectedRoute>
                 <IdentityListPage />
@@ -73,7 +71,7 @@ function App() {
             }
           />
           <Route
-            path="/identities/:id"
+            path="/admin/identities/:id"
             element={
               <ProtectedRoute>
                 <IdentityDetailPage />
@@ -81,25 +79,37 @@ function App() {
             }
           />
           <Route
-            path="/admin"
+            path="/admin/panel"
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminPanelPage />
               </ProtectedRoute>
             }
           />
-
-          {/* Default redirect */}
           <Route
-            path="/"
+            path="/superadmin"
             element={
-              authService.isAuthenticated() ? (
-                <Navigate to="/dashboard" replace />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+              <ProtectedRoute requiredRole="superadmin">
+                <SuperadminPage />
+              </ProtectedRoute>
             }
           />
+          <Route
+            path="/superadmin/users/:username"
+            element={
+              <ProtectedRoute requiredRole="superadmin">
+                <SuperadminPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Legacy redirects for backward compatibility */}
+          <Route path="/login" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/dashboard" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/upload" element={<Navigate to="/apply" replace />} />
+          <Route path="/applications" element={<Navigate to="/admin/applications" replace />} />
+          <Route path="/identities" element={<Navigate to="/admin/identities" replace />} />
+          <Route path="/admin" element={<Navigate to="/admin/panel" replace />} />
 
           {/* Catch all - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />

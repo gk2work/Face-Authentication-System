@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Dict, Any
+from datetime import datetime
 
 from app.core.logging import logger
 from app.api.dependencies import require_admin
@@ -9,8 +10,47 @@ from app.models.user import User
 from app.utils.resilience import get_resilience_status
 from app.utils.retry import dead_letter_queue
 from app.utils.circuit_breaker import circuit_breaker_registry
+from app.database.mongodb import mongodb_manager
 
 router = APIRouter(prefix="/system", tags=["system"])
+
+# Create a separate router for health endpoint without prefix
+health_router = APIRouter(tags=["system"])
+
+
+@health_router.get("/health")
+async def health_check_v1() -> Dict[str, Any]:
+    """
+    Health check endpoint at /api/v1/health
+    
+    Returns basic health status for the API
+    """
+    try:
+        # Quick database check
+        db_healthy = await mongodb_manager.health_check()
+        
+        if db_healthy:
+            return {
+                "status": "healthy",
+                "service": "face-auth-system",
+                "version": "1.0.0",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        else:
+            return {
+                "status": "unhealthy",
+                "service": "face-auth-system",
+                "message": "Database connection failed",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return {
+            "status": "unhealthy",
+            "service": "face-auth-system",
+            "message": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
 
 
 @router.get("/resilience", response_model=Dict[str, Any])

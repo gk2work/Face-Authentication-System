@@ -73,6 +73,12 @@ class ErrorResponse(BaseModel):
     actionable_feedback: Optional[List[str]] = None
     retry_after: Optional[int] = None  # Seconds to wait before retry
     support_reference: Optional[str] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary with JSON-serializable datetime"""
+        data = self.model_dump()
+        data['timestamp'] = self.timestamp.isoformat()
+        return data
 
 
 class ErrorMessageMapper:

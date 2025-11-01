@@ -33,8 +33,8 @@ class AuthService {
     tokenManager.clearTokens();
     this.currentUser = null;
 
-    // Redirect to login page
-    window.location.href = "/login";
+    // Redirect to admin login page
+    window.location.href = "/admin/login";
   }
 
   /**

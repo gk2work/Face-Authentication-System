@@ -3,7 +3,7 @@ import { authService } from '@/services';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'operator' | 'viewer' | 'reviewer';
+  requiredRole?: 'admin' | 'operator' | 'viewer' | 'reviewer' | 'superadmin';
 }
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
@@ -27,10 +27,14 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     const hasRequiredRole = currentUser.roles?.includes(requiredRole as any) || 
                            currentUser.role === requiredRole;
 
-    // Admin has access to everything
+    // Superadmin has access to everything
+    const isSuperadmin = currentUser.roles?.includes('superadmin') || currentUser.role === 'superadmin';
+    
+    // Admin has access to everything except superadmin routes
     const isAdmin = currentUser.roles?.includes('admin') || currentUser.role === 'admin';
+    const isSuperadminRoute = requiredRole === 'superadmin';
 
-    if (!hasRequiredRole && !isAdmin) {
+    if (!hasRequiredRole && !isSuperadmin && !(isAdmin && !isSuperadminRoute)) {
       // User doesn't have sufficient permissions
       return <Navigate to="/unauthorized" replace />;
     }

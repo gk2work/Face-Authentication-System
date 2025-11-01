@@ -1,13 +1,14 @@
 """User and authentication data models"""
 
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
 
 
 class UserRole(str, Enum):
     """User roles for access control"""
+    SUPERADMIN = "superadmin"
     ADMIN = "admin"
     REVIEWER = "reviewer"
     AUDITOR = "auditor"
@@ -74,3 +75,46 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     last_login: Optional[datetime] = None
+
+
+class AdminUserResponse(BaseModel):
+    """Response model for admin user in superadmin context"""
+    username: str
+    email: EmailStr
+    full_name: str
+    roles: List[UserRole]
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    last_login: Optional[datetime] = None
+    application_count: int = 0
+
+
+class AdminUserStatsResponse(BaseModel):
+    """Response model for admin user statistics"""
+    username: str
+    total_applications: int
+    applications_by_status: Dict[str, int]
+    total_overrides: int
+    overrides_by_decision: Dict[str, int]
+    activity_timeline: List[Dict[str, Any]]
+    last_30_days_total: int
+
+
+class AggregateStatsResponse(BaseModel):
+    """Response model for aggregate admin statistics"""
+    total_admin_users: int
+    active_admin_users: int
+    inactive_admin_users: int
+    users_by_role: Dict[str, int]
+    total_applications_last_30_days: int
+    most_active_users: List[Dict[str, Any]]
+
+
+class PaginatedAdminUsersResponse(BaseModel):
+    """Paginated response for admin users"""
+    users: List[AdminUserResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

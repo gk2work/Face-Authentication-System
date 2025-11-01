@@ -133,3 +133,4 @@ def require_roles(required_roles: List[UserRole]):
 require_admin = require_roles([UserRole.ADMIN])
 require_admin_or_reviewer = require_roles([UserRole.ADMIN, UserRole.REVIEWER])
 require_auditor = require_roles([UserRole.ADMIN, UserRole.AUDITOR])
+require_superadmin = require_roles([UserRole.SUPERADMIN])

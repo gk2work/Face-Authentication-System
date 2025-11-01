@@ -28,3 +28,16 @@ export type {
   IdentityFilters,
   IdentityApplication,
 } from "./identity";
+
+export type {
+  AdminUser,
+  AdminUserFilters,
+  AdminUserStats,
+  AdminActivityData,
+  AggregateAdminStats,
+  MostActiveUser,
+  PaginatedAdminUsers,
+  CreateAdminUserRequest,
+  UpdateAdminUserRequest,
+  DeactivateUserResponse,
+} from "./superadmin";

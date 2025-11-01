@@ -25,7 +25,8 @@ class PhotographService:
     
     def __init__(self):
         self.storage_path = Path(settings.STORAGE_PATH)
-        self.supported_formats = ["jpg", "jpeg", "png"]
+        # Accept common image formats (will be converted to JPEG/PNG)
+        self.supported_formats = ["jpg", "jpeg", "png", "mpo", "bmp", "gif", "tiff", "webp"]
         self.min_resolution = 300  # Minimum width/height in pixels
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         
@@ -153,26 +154,32 @@ class PhotographService:
         # Validate resolution
         width, height = self.validate_resolution(image)
         
-        # Verify image format matches
+        # Verify image format is supported (be lenient - PIL can convert)
         image_format = image.format.lower() if image.format else ""
-        if image_format not in ["jpeg", "jpg", "png"]:
-            raise PhotographValidationError(
-                error_code="E011",
-                message=f"Image format mismatch. Expected {photograph_format}, got {image_format}"
-            )
+        # Accept any format that PIL can read and convert to JPEG/PNG
+        # Common formats: JPEG, PNG, MPO (Multi Picture Object), BMP, GIF, etc.
+        if image_format not in ["jpeg", "jpg", "png", "mpo", "bmp", "gif", "tiff", "webp"]:
+            logger.warning(f"Unusual image format detected: {image_format}, will attempt conversion")
+        
+        # Convert to RGB mode if needed (for JPEG compatibility)
+        if image.mode not in ["RGB", "L"]:
+            logger.info(f"Converting image from {image.mode} to RGB mode")
+            image = image.convert("RGB")
         
         logger.info(f"Photograph validation successful: {width}x{height}, {file_size} bytes")
         
         return image, width, height, file_size
     
-    def save_photograph(self, application_id: str, image: Image.Image, photograph_format: str) -> str:
+    async def save_photograph(self, application_id: str, photograph_base64: str = None, 
+                             image: Image.Image = None, format: str = "jpg") -> str:
         """
-        Save photograph to local storage
+        Save photograph to local storage (accepts either base64 or PIL Image)
         
         Args:
             application_id: Unique application identifier
-            image: PIL Image object
-            photograph_format: Image format for saving
+            photograph_base64: Base64 encoded image (optional)
+            image: PIL Image object (optional)
+            format: Image format for saving
             
         Returns:
             File path where photograph was saved
@@ -181,9 +188,15 @@ class PhotographService:
             Exception: If save operation fails
         """
         try:
+            # If base64 provided, validate and decode first
+            if photograph_base64:
+                image, width, height, file_size = self.validate_photograph(photograph_base64, format)
+            elif image is None:
+                raise ValueError("Either photograph_base64 or image must be provided")
+            
             # Normalize format
-            save_format = "JPEG" if photograph_format.lower() in ["jpg", "jpeg"] else "PNG"
-            extension = "jpg" if photograph_format.lower() in ["jpg", "jpeg"] else "png"
+            save_format = "JPEG" if format.lower() in ["jpg", "jpeg"] else "PNG"
+            extension = "jpg" if format.lower() in ["jpg", "jpeg"] else "png"
             
             # Generate file path
             file_path = self.storage_path / f"{application_id}.{extension}"

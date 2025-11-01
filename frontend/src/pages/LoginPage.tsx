@@ -86,8 +86,8 @@ export const LoginPage = () => {
     try {
       await authService.login(formData);
       
-      // Get the redirect location from state, or default to dashboard
-      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      // Get the redirect location from state, or default to admin dashboard
+      const from = (location.state as any)?.from?.pathname || '/admin/dashboard';
       navigate(from, { replace: true });
     } catch (error: any) {
       setErrorMessage(
@@ -134,10 +134,10 @@ export const LoginPage = () => {
                 <LockOutlined sx={{ color: 'white', fontSize: 32 }} />
               </Box>
               <Typography variant="h5" component="h1" fontWeight={600}>
-                Sign In
+                Admin Login
               </Typography>
               <Typography variant="body2" color="text.secondary" mt={1}>
-                Face Authentication System
+                Face Authentication System - Staff Access
               </Typography>
             </Box>
 

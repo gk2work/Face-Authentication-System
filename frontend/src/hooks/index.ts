@@ -8,3 +8,7 @@ export { useIdentities } from "./useIdentities";
 export { useIdentity } from "./useIdentity";
 export { useAsync } from "./useAsync";
 export { useOnlineStatus } from "./useOnlineStatus";
+export { useAdminUsers } from "./useAdminUsers";
+export { useAdminUserStats } from "./useAdminUserStats";
+export { useAdminActivity } from "./useAdminActivity";
+export { useAggregateStats } from "./useAggregateStats";
